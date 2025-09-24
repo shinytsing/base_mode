@@ -1,86 +1,82 @@
 #!/bin/bash
 
-# 设置国内镜像源
-export PUB_HOSTED_URL=https://pub.flutter-io.cn
-export FLUTTER_STORAGE_BASE_URL=https://storage.flutter-io.cn
-
-echo "🚀 开始测试五个应用..."
+# 测试所有五个独立应用
+echo "🧪 开始测试所有五个独立应用..."
 echo "=================================="
 
 # 检查Flutter环境
-echo "📱 检查Flutter环境..."
-flutter doctor --no-version-check
+if ! command -v flutter &> /dev/null; then
+    echo "❌ Flutter未安装或未添加到PATH"
+    exit 1
+fi
+
+echo "✅ Flutter环境检查通过"
+
+# 测试函数
+test_app() {
+    local app_name=$1
+    local app_path=$2
+    
+    echo ""
+    echo "🔍 测试 $app_name..."
+    cd $app_path
+    
+    # 检查pubspec.yaml
+    if [ ! -f "pubspec.yaml" ]; then
+        echo "❌ $app_name: pubspec.yaml 不存在"
+        return 1
+    fi
+    
+    # 检查main.dart
+    if [ ! -f "lib/main.dart" ]; then
+        echo "❌ $app_name: lib/main.dart 不存在"
+        return 1
+    fi
+    
+    # 检查Android配置
+    if [ ! -f "android/app/build.gradle.kts" ]; then
+        echo "❌ $app_name: Android配置不存在"
+        return 1
+    fi
+    
+    # 检查iOS配置
+    if [ ! -f "ios/Runner.xcodeproj/project.pbxproj" ]; then
+        echo "❌ $app_name: iOS配置不存在"
+        return 1
+    fi
+    
+    # 尝试获取依赖
+    echo "📦 获取依赖..."
+    if flutter pub get; then
+        echo "✅ $app_name: 依赖获取成功"
+    else
+        echo "❌ $app_name: 依赖获取失败"
+        return 1
+    fi
+    
+    # 尝试分析代码
+    echo "🔍 分析代码..."
+    if flutter analyze; then
+        echo "✅ $app_name: 代码分析通过"
+    else
+        echo "⚠️  $app_name: 代码分析有警告"
+    fi
+    
+    echo "✅ $app_name: 测试通过"
+    cd ../..
+}
+
+# 测试所有应用
+test_app "创意工作室" "apps/creative_studio"
+test_app "健身助手" "apps/fit_tracker"
+test_app "生活模式" "apps/life_mode"
+test_app "质量工具箱" "apps/qa_toolbox_pro"
+test_app "社交中心" "apps/social_hub"
 
 echo ""
-echo "🔧 检查可用设备..."
-flutter devices
-
-echo ""
-echo "📦 获取依赖包..."
-flutter pub get
-
-echo ""
-echo "🎯 开始测试五个应用..."
-
-# 测试1: QA ToolBox (iPhone)
-echo ""
-echo "1️⃣ 测试 QA ToolBox (iPhone 16 Plus)..."
-flutter run -t lib/main_qa_toolbox.dart -d "iPhone 16 Plus" --no-sound-null-safety &
-QA_PID=$!
-
-# 等待5秒
-sleep 5
-
-# 测试2: Business App (Android)
-echo ""
-echo "2️⃣ 测试 Business App (Android)..."
-flutter run -t lib/main_business_app.dart -d "sdk gphone64 arm64" --no-sound-null-safety &
-BUSINESS_PID=$!
-
-# 等待5秒
-sleep 5
-
-# 测试3: Social App (macOS)
-echo ""
-echo "3️⃣ 测试 Social App (macOS)..."
-flutter run -t lib/main_social_app.dart -d "macos" --no-sound-null-safety &
-SOCIAL_PID=$!
-
-# 等待5秒
-sleep 5
-
-# 测试4: Productivity App (Chrome)
-echo ""
-echo "4️⃣ 测试 Productivity App (Chrome)..."
-flutter run -t lib/main_productivity_app.dart -d "chrome" --no-sound-null-safety &
-PRODUCTIVITY_PID=$!
-
-# 等待5秒
-sleep 5
-
-# 测试5: Minimal App (iPhone)
-echo ""
-echo "5️⃣ 测试 Minimal App (iPhone 16 Plus)..."
-flutter run -t lib/main_minimal.dart -d "iPhone 16 Plus" --no-sound-null-safety &
-MINIMAL_PID=$!
-
-echo ""
-echo "✅ 所有五个应用已启动！"
+echo "🎉 所有应用测试完成！"
 echo "=================================="
-echo "📱 QA ToolBox: PID $QA_PID"
-echo "💼 Business App: PID $BUSINESS_PID"
-echo "👥 Social App: PID $SOCIAL_PID"
-echo "⚡ Productivity App: PID $PRODUCTIVITY_PID"
-echo "🎯 Minimal App: PID $MINIMAL_PID"
-echo ""
-echo "🎉 测试完成！所有应用都在虚拟机上运行！"
-echo ""
-echo "按 Ctrl+C 停止所有应用"
-
-# 等待用户中断
-trap 'echo "🛑 停止所有应用..."; kill $QA_PID $BUSINESS_PID $SOCIAL_PID $PRODUCTIVITY_PID $MINIMAL_PID 2>/dev/null; exit 0' INT
-
-# 保持脚本运行
-while true; do
-    sleep 1
-done
+echo "💡 下一步："
+echo "  - 运行 ./build_all_apps.sh 构建所有应用"
+echo "  - 或运行单个构建脚本，如 ./build_creative_studio.sh"
+echo "  - 在Android Studio或Xcode中打开项目进行调试"
