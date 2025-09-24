@@ -1,4 +1,4 @@
-package com.qatoolbox.pro
+package com.wechat.fittracker
 
 import io.flutter.embedding.android.FlutterActivity
 

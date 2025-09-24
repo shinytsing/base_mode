@@ -1,4 +1,4 @@
-package com.creativestudio.app
+package com.wechat.qatoolbox
 
 import io.flutter.embedding.android.FlutterActivity
 

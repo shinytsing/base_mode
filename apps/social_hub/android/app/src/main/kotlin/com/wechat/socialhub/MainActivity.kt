@@ -1,4 +1,4 @@
-package com.lifemode.app
+package com.wechat.socialhub
 
 import io.flutter.embedding.android.FlutterActivity
 
