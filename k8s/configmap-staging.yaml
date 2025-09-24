@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: qa-toolbox-config
+  namespace: qa-toolbox
+data:
+  app-name: "QAToolBox"
+  app-version: "1.0.0"
+  api-base-url: "https://staging-api.qatoolbox.com"
+  log-level: "debug"
+  debug-mode: "true"
+  max-upload-size: "100MB"
+  session-timeout: "3600"
+  rate-limit: "1000"
+  cors-origins: "https://staging.qatoolbox.com,https://staging-admin.qatoolbox.com"

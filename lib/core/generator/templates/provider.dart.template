@@ -1,0 +1,188 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../models/{{appId}}_model.dart';
+import '../services/{{appId}}_service.dart';
+
+// 应用数据状态
+class {{appName}}State {
+  final List<{{appName}}Data> data;
+  final List<{{appName}}Feature> features;
+  final {{appName}}Settings settings;
+  final {{appName}}User? user;
+  final bool isLoading;
+  final String? error;
+
+  const {{appName}}State({
+    this.data = const [],
+    this.features = const [],
+    required this.settings,
+    this.user,
+    this.isLoading = false,
+    this.error,
+  });
+
+  {{appName}}State copyWith({
+    List<{{appName}}Data>? data,
+    List<{{appName}}Feature>? features,
+    {{appName}}Settings? settings,
+    {{appName}}User? user,
+    bool? isLoading,
+    String? error,
+  }) {
+    return {{appName}}State(
+      data: data ?? this.data,
+      features: features ?? this.features,
+      settings: settings ?? this.settings,
+      user: user ?? this.user,
+      isLoading: isLoading ?? this.isLoading,
+      error: error ?? this.error,
+    );
+  }
+}
+
+// 应用状态提供者
+class {{appName}}Notifier extends StateNotifier<{{appName}}State> {
+  final {{appName}}Service _service;
+
+  {{appName}}Notifier(this._service) : super(
+    {{appName}}State(
+      settings: const {{appName}}Settings(),
+    ),
+  ) {
+    _loadInitialData();
+  }
+
+  // 加载初始数据
+  Future<void> _loadInitialData() async {
+    await Future.wait([
+      _loadData(),
+      _loadFeatures(),
+      _loadSettings(),
+    ]);
+  }
+
+  // 加载数据
+  Future<void> _loadData() async {
+    state = state.copyWith(isLoading: true);
+    
+    try {
+      final response = await _service.getData();
+      // 根据实际API响应解析数据
+      state = state.copyWith(
+        data: [], // 解析后的数据列表
+        isLoading: false,
+      );
+    } catch (e) {
+      state = state.copyWith(
+        isLoading: false,
+        error: e.toString(),
+      );
+    }
+  }
+
+  // 加载功能列表
+  Future<void> _loadFeatures() async {
+    try {
+      final features = await _service.getFeatures();
+      state = state.copyWith(
+        features: features.map((f) => {{appName}}Feature.fromJson(f)).toList(),
+      );
+    } catch (e) {
+      state = state.copyWith(error: e.toString());
+    }
+  }
+
+  // 加载设置
+  Future<void> _loadSettings() async {
+    try {
+      final settings = await _service.getSettings();
+      state = state.copyWith(
+        settings: {{appName}}Settings.fromJson(settings),
+      );
+    } catch (e) {
+      state = state.copyWith(error: e.toString());
+    }
+  }
+
+  // 保存数据
+  Future<void> saveData({{appName}}Data item) async {
+    try {
+      await _service.saveData(item.toJson());
+      await _loadData();
+    } catch (e) {
+      state = state.copyWith(error: e.toString());
+    }
+  }
+
+  // 创建功能
+  Future<void> createFeature({{appName}}Feature feature) async {
+    try {
+      await _service.createFeature(feature.toJson());
+      await _loadFeatures();
+    } catch (e) {
+      state = state.copyWith(error: e.toString());
+    }
+  }
+
+  // 更新功能
+  Future<void> updateFeature(String id, {{appName}}Feature feature) async {
+    try {
+      await _service.updateFeature(id, feature.toJson());
+      await _loadFeatures();
+    } catch (e) {
+      state = state.copyWith(error: e.toString());
+    }
+  }
+
+  // 删除功能
+  Future<void> deleteFeature(String id) async {
+    try {
+      await _service.deleteFeature(id);
+      await _loadFeatures();
+    } catch (e) {
+      state = state.copyWith(error: e.toString());
+    }
+  }
+
+  // 更新设置
+  Future<void> updateSettings({{appName}}Settings newSettings) async {
+    try {
+      await _service.updateSettings(newSettings.toJson());
+      state = state.copyWith(settings: newSettings);
+    } catch (e) {
+      state = state.copyWith(error: e.toString());
+    }
+  }
+
+  // 刷新数据
+  Future<void> refresh() async {
+    await _loadInitialData();
+  }
+
+  // 清除错误
+  void clearError() {
+    state = state.copyWith(error: null);
+  }
+}
+
+// 提供者
+final {{appId}}ServiceProvider = Provider<{{appName}}Service>((ref) {
+  return {{appName}}ServiceClient.instance;
+});
+
+final {{appId}}Provider = StateNotifierProvider<{{appName}}Notifier, {{appName}}State>((ref) {
+  final service = ref.watch({{appId}}ServiceProvider);
+  return {{appName}}Notifier(service);
+});
+
+// 功能提供者
+final {{appId}}FeaturesProvider = Provider<List<{{appName}}Feature>>((ref) {
+  final state = ref.watch({{appId}}Provider);
+  return state.features;
+});
+
+// 设置提供者
+final {{appId}}SettingsProvider = Provider<{{appName}}Settings>((ref) {
+  final state = ref.watch({{appId}}Provider);
+  return state.settings;
+});

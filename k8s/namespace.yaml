@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: qa-toolbox
+  labels:
+    name: qa-toolbox
+    app: qa-toolbox

@@ -1,0 +1,585 @@
+import 'package:flutter/material.dart';
+
+void main() {
+  runApp(const CreativeStudioApp());
+}
+
+class CreativeStudioApp extends StatelessWidget {
+  const CreativeStudioApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'CreativeStudio',
+      theme: ThemeData(
+        primarySwatch: Colors.cyan,
+        primaryColor: const Color(0xFF00BCD4),
+        scaffoldBackgroundColor: const Color(0xFFEDEDED),
+        appBarTheme: const AppBarTheme(
+          backgroundColor: Color(0xFF00BCD4),
+          foregroundColor: Colors.white,
+          elevation: 0,
+        ),
+      ),
+      debugShowCheckedModeBanner: false,
+      home: const CreativeStudioHomePage(),
+    );
+  }
+}
+
+class CreativeStudioHomePage extends StatefulWidget {
+  const CreativeStudioHomePage({super.key});
+
+  @override
+  State<CreativeStudioHomePage> createState() => _CreativeStudioHomePageState();
+}
+
+class _CreativeStudioHomePageState extends State<CreativeStudioHomePage> {
+  int _currentIndex = 0;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: IndexedStack(
+        index: _currentIndex,
+        children: const [
+          _HomeTab(),
+          _CreateTab(),
+          _GalleryTab(),
+          _ProfileTab(),
+        ],
+      ),
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: _currentIndex,
+        onTap: (index) => setState(() => _currentIndex = index),
+        type: BottomNavigationBarType.fixed,
+        selectedItemColor: const Color(0xFF00BCD4),
+        unselectedItemColor: Colors.grey,
+        items: const [
+          BottomNavigationBarItem(
+            icon: Icon(Icons.home_outlined),
+            activeIcon: Icon(Icons.home),
+            label: '首页',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.add_circle_outline),
+            activeIcon: Icon(Icons.add_circle),
+            label: '创作',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.photo_library_outlined),
+            activeIcon: Icon(Icons.photo_library),
+            label: '作品',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.person_outline),
+            activeIcon: Icon(Icons.person),
+            label: '我的',
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _HomeTab extends StatelessWidget {
+  const _HomeTab();
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('CreativeStudio'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.search),
+            onPressed: () {},
+          ),
+          IconButton(
+            icon: const Icon(Icons.notifications),
+            onPressed: () {},
+          ),
+        ],
+      ),
+      body: SingleChildScrollView(
+        child: Column(
+          children: [
+            // 欢迎卡片
+            Container(
+              margin: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    '欢迎使用 CreativeStudio',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.black87,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    '释放你的创意潜能，创作无限可能',
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.grey,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: () {},
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF00BCD4),
+                            foregroundColor: Colors.white,
+                          ),
+                          child: const Text('开始创作'),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: () {},
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.white,
+                            foregroundColor: const Color(0xFF00BCD4),
+                            side: const BorderSide(color: Color(0xFF00BCD4)),
+                          ),
+                          child: const Text('浏览作品'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            
+            // 功能列表
+            Container(
+              color: Colors.white,
+              child: Column(
+                children: [
+                  _buildListItem(
+                    icon: Icons.edit,
+                    title: 'AI 写作',
+                    subtitle: '智能生成文章、剧本、诗歌',
+                    onTap: () {},
+                  ),
+                  const Divider(height: 0.5, indent: 16),
+                  _buildListItem(
+                    icon: Icons.palette,
+                    title: '图像创作',
+                    subtitle: '艺术滤镜、风格转换、AI绘画',
+                    onTap: () {},
+                  ),
+                  const Divider(height: 0.5, indent: 16),
+                  _buildListItem(
+                    icon: Icons.music_note,
+                    title: '音乐制作',
+                    subtitle: '智能作曲、音效编辑、混音',
+                    onTap: () {},
+                  ),
+                  const Divider(height: 0.5, indent: 16),
+                  _buildListItem(
+                    icon: Icons.videocam,
+                    title: '视频编辑',
+                    subtitle: '剪辑、特效、字幕、转场',
+                    onTap: () {},
+                  ),
+                  const Divider(height: 0.5, indent: 16),
+                  _buildListItem(
+                    icon: Icons.design_services,
+                    title: '海报设计',
+                    subtitle: '制作精美的海报和宣传图',
+                    onTap: () {},
+                  ),
+                  const Divider(height: 0.5, indent: 16),
+                  _buildListItem(
+                    icon: Icons.brush,
+                    title: 'Logo设计',
+                    subtitle: '创建专业的品牌标识',
+                    onTap: () {},
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildListItem({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required VoidCallback onTap,
+  }) {
+    return ListTile(
+      leading: Icon(icon, color: const Color(0xFF00BCD4)),
+      title: Text(title),
+      subtitle: Text(subtitle),
+      trailing: const Icon(Icons.chevron_right),
+      onTap: onTap,
+    );
+  }
+}
+
+class _CreateTab extends StatelessWidget {
+  const _CreateTab();
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('创作中心'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.history),
+            onPressed: () {},
+          ),
+        ],
+      ),
+      body: GridView.count(
+        crossAxisCount: 2,
+        padding: const EdgeInsets.all(16),
+        crossAxisSpacing: 16,
+        mainAxisSpacing: 16,
+        children: [
+          _buildCreateCard(
+            icon: Icons.edit,
+            title: 'AI写作',
+            subtitle: '智能创作',
+            color: Colors.blue,
+            onTap: () {},
+          ),
+          _buildCreateCard(
+            icon: Icons.palette,
+            title: '图像创作',
+            subtitle: '艺术设计',
+            color: Colors.purple,
+            onTap: () {},
+          ),
+          _buildCreateCard(
+            icon: Icons.music_note,
+            title: '音乐制作',
+            subtitle: '音频编辑',
+            color: Colors.orange,
+            onTap: () {},
+          ),
+          _buildCreateCard(
+            icon: Icons.videocam,
+            title: '视频编辑',
+            subtitle: '视频制作',
+            color: Colors.red,
+            onTap: () {},
+          ),
+          _buildCreateCard(
+            icon: Icons.design_services,
+            title: '海报设计',
+            subtitle: '平面设计',
+            color: Colors.green,
+            onTap: () {},
+          ),
+          _buildCreateCard(
+            icon: Icons.brush,
+            title: 'Logo设计',
+            subtitle: '品牌设计',
+            color: Colors.teal,
+            onTap: () {},
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCreateCard({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: 60,
+              height: 60,
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(30),
+              ),
+              child: Icon(
+                icon,
+                color: color,
+                size: 30,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              title,
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: Colors.black87,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              subtitle,
+              style: const TextStyle(
+                fontSize: 12,
+                color: Colors.grey,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _GalleryTab extends StatelessWidget {
+  const _GalleryTab();
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('我的作品'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.grid_view),
+            onPressed: () {},
+          ),
+          IconButton(
+            icon: const Icon(Icons.sort),
+            onPressed: () {},
+          ),
+        ],
+      ),
+      body: ListView(
+        children: [
+          Container(
+            color: Colors.white,
+            child: Column(
+              children: [
+                _buildListItem(
+                  icon: Icons.image,
+                  title: 'AI绘画作品',
+                  subtitle: '2024-01-15 创建',
+                  onTap: () {},
+                ),
+                const Divider(height: 0.5, indent: 16),
+                _buildListItem(
+                  icon: Icons.edit,
+                  title: '创意文章',
+                  subtitle: '2024-01-14 创建',
+                  onTap: () {},
+                ),
+                const Divider(height: 0.5, indent: 16),
+                _buildListItem(
+                  icon: Icons.music_note,
+                  title: '原创音乐',
+                  subtitle: '2024-01-13 创建',
+                  onTap: () {},
+                ),
+                const Divider(height: 0.5, indent: 16),
+                _buildListItem(
+                  icon: Icons.image,
+                  title: '图像作品',
+                  subtitle: '共创作 25 件作品',
+                  trailing: const Text('25', style: TextStyle(color: Color(0xFF00BCD4))),
+                  onTap: () {},
+                ),
+                const Divider(height: 0.5, indent: 16),
+                _buildListItem(
+                  icon: Icons.edit,
+                  title: '文字作品',
+                  subtitle: '共创作 18 篇文章',
+                  trailing: const Text('18', style: TextStyle(color: Color(0xFF00BCD4))),
+                  onTap: () {},
+                ),
+                const Divider(height: 0.5, indent: 16),
+                _buildListItem(
+                  icon: Icons.music_note,
+                  title: '音乐作品',
+                  subtitle: '共创作 12 首歌曲',
+                  trailing: const Text('12', style: TextStyle(color: Color(0xFF00BCD4))),
+                  onTap: () {},
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildListItem({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    Widget? trailing,
+    required VoidCallback onTap,
+  }) {
+    return ListTile(
+      leading: Icon(icon, color: const Color(0xFF00BCD4)),
+      title: Text(title),
+      subtitle: Text(subtitle),
+      trailing: trailing ?? const Icon(Icons.chevron_right),
+      onTap: onTap,
+    );
+  }
+}
+
+class _ProfileTab extends StatelessWidget {
+  const _ProfileTab();
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('我的'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.settings),
+            onPressed: () {},
+          ),
+        ],
+      ),
+      body: ListView(
+        children: [
+          // 用户信息
+          Container(
+            margin: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 60,
+                  height: 60,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(4),
+                    color: Colors.grey[300],
+                  ),
+                  child: const Icon(Icons.person, size: 30, color: Colors.grey),
+                ),
+                const SizedBox(width: 16),
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '创意大师',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.black87,
+                        ),
+                      ),
+                      SizedBox(height: 4),
+                      Text(
+                        '用创意点亮世界',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const Icon(Icons.chevron_right),
+              ],
+            ),
+          ),
+          
+          // 功能列表
+          Container(
+            color: Colors.white,
+            child: Column(
+              children: [
+                _buildListItem(
+                  icon: Icons.trending_up,
+                  title: '创作天数',
+                  subtitle: '已连续创作 30 天',
+                  trailing: const Text('30天', style: TextStyle(color: Color(0xFF00BCD4))),
+                  onTap: () {},
+                ),
+                const Divider(height: 0.5, indent: 16),
+                _buildListItem(
+                  icon: Icons.favorite,
+                  title: '作品点赞',
+                  subtitle: '总获得 1,234 个赞',
+                  trailing: const Text('1,234', style: TextStyle(color: Color(0xFF00BCD4))),
+                  onTap: () {},
+                ),
+                const Divider(height: 0.5, indent: 16),
+                _buildListItem(
+                  icon: Icons.notifications,
+                  title: '创作提醒',
+                  onTap: () {},
+                ),
+                const Divider(height: 0.5, indent: 16),
+                _buildListItem(
+                  icon: Icons.share,
+                  title: '分享作品',
+                  onTap: () {},
+                ),
+                const Divider(height: 0.5, indent: 16),
+                _buildListItem(
+                  icon: Icons.help,
+                  title: '帮助中心',
+                  onTap: () {},
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildListItem({
+    required IconData icon,
+    required String title,
+    String? subtitle,
+    Widget? trailing,
+    required VoidCallback onTap,
+  }) {
+    return ListTile(
+      leading: Icon(icon, color: const Color(0xFF00BCD4)),
+      title: Text(title),
+      subtitle: subtitle != null ? Text(subtitle) : null,
+      trailing: trailing ?? const Icon(Icons.chevron_right),
+      onTap: onTap,
+    );
+  }
+}

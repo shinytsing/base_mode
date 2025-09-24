@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QAToolBox API 测试</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        h1 {
+            color: #6366F1;
+            text-align: center;
+        }
+        h2 {
+            color: #8B5CF6;
+            border-bottom: 2px solid #8B5CF6;
+            padding-bottom: 10px;
+        }
+        .api-test {
+            margin: 15px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background-color: #f9f9f9;
+        }
+        button {
+            background-color: #6366F1;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #5B5BD6;
+        }
+        .result {
+            background-color: #f0f0f0;
+            padding: 10px;
+            border-radius: 5px;
+            margin-top: 10px;
+            font-family: monospace;
+            white-space: pre-wrap;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .success {
+            border-left: 4px solid #10B981;
+        }
+        .error {
+            border-left: 4px solid #EF4444;
+        }
+        .status {
+            display: inline-block;
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-size: 12px;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+        .status.ok {
+            background-color: #D1FAE5;
+            color: #065F46;
+        }
+        .status.error {
+            background-color: #FEE2E2;
+            color: #991B1B;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 QAToolBox API 功能测试</h1>
+        <p>测试Go后端服务的各种API接口功能</p>
+    </div>
+
+    <div class="container">
+        <h2>📊 系统状态</h2>
+        <div class="api-test">
+            <button onclick="testHealth()">测试健康检查</button>
+            <div id="health-result" class="result"></div>
+        </div>
+    </div>
+
+    <div class="container">
+        <h2>📱 应用管理</h2>
+        <div class="api-test">
+            <button onclick="testApps()">获取应用列表</button>
+            <button onclick="testAppById()">获取单个应用</button>
+            <div id="apps-result" class="result"></div>
+        </div>
+    </div>
+
+    <div class="container">
+        <h2>🤖 AI服务</h2>
+        <div class="api-test">
+            <button onclick="testAIServices()">获取AI服务列表</button>
+            <button onclick="testAIStats()">获取AI统计</button>
+            <div id="ai-result" class="result"></div>
+        </div>
+    </div>
+
+    <div class="container">
+        <h2>🔧 QAToolBox功能</h2>
+        <div class="api-test">
+            <button onclick="testQAToolbox()">测试QA工具箱功能</button>
+            <div id="qa-result" class="result"></div>
+        </div>
+    </div>
+
+    <div class="container">
+        <h2>🌐 第三方服务</h2>
+        <div class="api-test">
+            <button onclick="testThirdPartyStatus()">检查第三方服务状态</button>
+            <div id="third-party-result" class="result"></div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:8080/api/v1';
+        
+        async function makeRequest(url, options = {}) {
+            try {
+                const response = await fetch(url, {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...options.headers
+                    },
+                    ...options
+                });
+                const data = await response.json();
+                return { success: response.ok, data, status: response.status };
+            } catch (error) {
+                return { success: false, error: error.message };
+            }
+        }
+
+        function displayResult(elementId, result) {
+            const element = document.getElementById(elementId);
+            if (result.success) {
+                element.className = 'result success';
+                element.textContent = JSON.stringify(result.data, null, 2);
+            } else {
+                element.className = 'result error';
+                element.textContent = `错误: ${result.error || result.data?.message || '未知错误'}`;
+            }
+        }
+
+        async function testHealth() {
+            const result = await makeRequest(`${API_BASE}/health`);
+            displayResult('health-result', result);
+        }
+
+        async function testApps() {
+            const result = await makeRequest(`${API_BASE}/apps`);
+            displayResult('apps-result', result);
+        }
+
+        async function testAppById() {
+            const result = await makeRequest(`${API_BASE}/apps/qa-toolbox`);
+            displayResult('apps-result', result);
+        }
+
+        async function testAIServices() {
+            const result = await makeRequest(`${API_BASE}/ai/services`);
+            displayResult('ai-result', result);
+        }
+
+        async function testAIStats() {
+            const result = await makeRequest(`${API_BASE}/ai/stats`);
+            displayResult('ai-result', result);
+        }
+
+        async function testQAToolbox() {
+            const result = await makeRequest(`${API_BASE}/qa-toolbox/test-cases`);
+            displayResult('qa-result', result);
+        }
+
+        async function testThirdPartyStatus() {
+            const result = await makeRequest(`${API_BASE}/third-party/status`);
+            displayResult('third-party-result', result);
+        }
+
+        // 页面加载时自动测试健康检查
+        window.onload = function() {
+            testHealth();
+        };
+    </script>
+</body>
+</html>

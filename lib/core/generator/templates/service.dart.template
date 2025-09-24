@@ -1,0 +1,85 @@
+import 'package:dio/dio.dart';
+import 'package:retrofit/retrofit.dart';
+
+import '../../../core/config/app_config.dart';
+
+part '{{appId}}_service.g.dart';
+
+@RestApi(baseUrl: AppConfig.baseApiUrl)
+abstract class {{appName}}Service {
+  factory {{appName}}Service(Dio dio, {String baseUrl}) = _{{appName}}Service;
+
+  @GET('/{{appId}}/data')
+  Future<Map<String, dynamic>> getData();
+
+  @POST('/{{appId}}/data')
+  Future<Map<String, dynamic>> saveData(@Body() Map<String, dynamic> data);
+
+  @GET('/{{appId}}/settings')
+  Future<Map<String, dynamic>> getSettings();
+
+  @PUT('/{{appId}}/settings')
+  Future<Map<String, dynamic>> updateSettings(@Body() Map<String, dynamic> settings);
+
+  @GET('/{{appId}}/features')
+  Future<List<Map<String, dynamic>>> getFeatures();
+
+  @POST('/{{appId}}/features')
+  Future<Map<String, dynamic>> createFeature(@Body() Map<String, dynamic> feature);
+
+  @PUT('/{{appId}}/features/{id}')
+  Future<Map<String, dynamic>> updateFeature(@Path('id') String id, @Body() Map<String, dynamic> feature);
+
+  @DELETE('/{{appId}}/features/{id}')
+  Future<void> deleteFeature(@Path('id') String id);
+}
+
+class {{appName}}ServiceClient {
+  static {{appName}}Service? _instance;
+  static Dio? _dio;
+
+  static {{appName}}Service get instance {
+    if (_instance == null) {
+      _dio = Dio();
+      _setupInterceptors();
+      _instance = {{appName}}Service(_dio!);
+    }
+    return _instance!;
+  }
+
+  static void _setupInterceptors() {
+    _dio!.interceptors.add(
+      InterceptorsWrapper(
+        onRequest: (options, handler) {
+          // 添加认证头
+          options.headers['Content-Type'] = 'application/json';
+          options.headers['Accept'] = 'application/json';
+          
+          // 添加JWT Token
+          final token = _getAuthToken();
+          if (token != null) {
+            options.headers['Authorization'] = 'Bearer $token';
+          }
+          
+          handler.next(options);
+        },
+        onResponse: (response, handler) {
+          // 记录响应日志
+          print('API Response: ${response.statusCode} ${response.requestOptions.path}');
+          handler.next(response);
+        },
+        onError: (error, handler) {
+          // 错误处理
+          print('API Error: ${error.response?.statusCode} ${error.message}');
+          handler.next(error);
+        },
+      ),
+    );
+  }
+
+  static String? _getAuthToken() {
+    // 从本地存储获取JWT Token
+    // 实际实现需要从SharedPreferences或Hive获取
+    return null;
+  }
+}

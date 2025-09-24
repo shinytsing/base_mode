@@ -1,0 +1,257 @@
+services:
+  auth:
+    port: 8001
+    description: "认证服务"
+    dependencies: ["user"]
+    endpoints:
+      - path: "/auth/login"
+        method: "POST"
+        description: "用户登录"
+      - path: "/auth/register"
+        method: "POST"
+        description: "用户注册"
+      - path: "/auth/refresh"
+        method: "POST"
+        description: "刷新Token"
+      - path: "/auth/logout"
+        method: "POST"
+        description: "用户登出"
+    database_tables:
+      - "users"
+      - "sessions"
+      - "refresh_tokens"
+
+  user:
+    port: 8002
+    description: "用户管理服务"
+    dependencies: []
+    endpoints:
+      - path: "/users/profile"
+        method: "GET"
+        description: "获取用户信息"
+      - path: "/users/profile"
+        method: "PUT"
+        description: "更新用户信息"
+      - path: "/users/membership"
+        method: "GET"
+        description: "获取会员信息"
+      - path: "/users/preferences"
+        method: "GET"
+        description: "获取用户偏好"
+    database_tables:
+      - "user_profiles"
+      - "user_preferences"
+      - "memberships"
+
+  payment:
+    port: 8003
+    description: "支付服务"
+    dependencies: ["user"]
+    endpoints:
+      - path: "/payments/create"
+        method: "POST"
+        description: "创建支付"
+      - path: "/payments/webhook"
+        method: "POST"
+        description: "支付回调"
+      - path: "/subscriptions"
+        method: "GET"
+        description: "获取订阅信息"
+      - path: "/subscriptions/cancel"
+        method: "POST"
+        description: "取消订阅"
+    database_tables:
+      - "payments"
+      - "subscriptions"
+      - "invoices"
+
+  notification:
+    port: 8004
+    description: "通知服务"
+    dependencies: ["user"]
+    endpoints:
+      - path: "/notifications/send"
+        method: "POST"
+        description: "发送通知"
+      - path: "/notifications/history"
+        method: "GET"
+        description: "获取通知历史"
+      - path: "/notifications/settings"
+        method: "PUT"
+        description: "更新通知设置"
+    database_tables:
+      - "notifications"
+      - "notification_settings"
+      - "notification_templates"
+
+  analytics:
+    port: 8005
+    description: "数据分析服务"
+    dependencies: ["user"]
+    endpoints:
+      - path: "/analytics/track"
+        method: "POST"
+        description: "追踪事件"
+      - path: "/analytics/dashboard"
+        method: "GET"
+        description: "获取分析仪表板"
+      - path: "/analytics/reports"
+        method: "GET"
+        description: "生成分析报告"
+    database_tables:
+      - "events"
+      - "user_analytics"
+      - "app_analytics"
+
+  qa_toolbox:
+    port: 8010
+    description: "QAToolBox应用服务"
+    dependencies: ["auth", "user", "analytics"]
+    endpoints:
+      - path: "/qa-toolbox/test-cases"
+        method: "POST"
+        description: "生成测试用例"
+      - path: "/qa-toolbox/code-analysis"
+        method: "POST"
+        description: "代码分析"
+      - path: "/qa-toolbox/api-test"
+        method: "POST"
+        description: "API测试"
+    database_tables:
+      - "test_cases"
+      - "code_analysis_results"
+      - "api_tests"
+
+  life_mode:
+    port: 8011
+    description: "LifeMode应用服务"
+    dependencies: ["auth", "user", "analytics"]
+    endpoints:
+      - path: "/life-mode/food-recommendation"
+        method: "POST"
+        description: "美食推荐"
+      - path: "/life-mode/travel-plan"
+        method: "POST"
+        description: "旅行规划"
+      - path: "/life-mode/mood-analysis"
+        method: "POST"
+        description: "情绪分析"
+    database_tables:
+      - "food_recommendations"
+      - "travel_plans"
+      - "mood_records"
+
+  fit_tracker:
+    port: 8012
+    description: "FitTracker应用服务"
+    dependencies: ["auth", "user", "analytics"]
+    endpoints:
+      - path: "/fit-tracker/workout-plan"
+        method: "POST"
+        description: "生成训练计划"
+      - path: "/fit-tracker/health-data"
+        method: "POST"
+        description: "记录健康数据"
+      - path: "/fit-tracker/nutrition-analysis"
+        method: "POST"
+        description: "营养分析"
+    database_tables:
+      - "workout_plans"
+      - "health_records"
+      - "nutrition_data"
+
+  social_hub:
+    port: 8013
+    description: "SocialHub应用服务"
+    dependencies: ["auth", "user", "analytics", "notification"]
+    endpoints:
+      - path: "/social-hub/matching"
+        method: "POST"
+        description: "智能匹配"
+      - path: "/social-hub/activities"
+        method: "GET"
+        description: "获取活动列表"
+      - path: "/social-hub/chat"
+        method: "POST"
+        description: "发送消息"
+    database_tables:
+      - "matches"
+      - "activities"
+      - "messages"
+      - "relationships"
+
+  creative_studio:
+    port: 8014
+    description: "CreativeStudio应用服务"
+    dependencies: ["auth", "user", "analytics"]
+    endpoints:
+      - path: "/creative-studio/ai-writing"
+        method: "POST"
+        description: "AI写作"
+      - path: "/creative-studio/image-generation"
+        method: "POST"
+        description: "图像生成"
+      - path: "/creative-studio/music-composition"
+        method: "POST"
+        description: "音乐创作"
+    database_tables:
+      - "creative_projects"
+      - "ai_generated_content"
+      - "media_files"
+
+database:
+  postgres:
+    host: "localhost"
+    port: 5432
+    database: "qatoolbox"
+    username: "postgres"
+    password: "password"
+    ssl_mode: "disable"
+    max_connections: 100
+    connection_timeout: "30s"
+
+  redis:
+    host: "localhost"
+    port: 6379
+    password: ""
+    db: 0
+    max_retries: 3
+    retry_delay: "1s"
+
+ai:
+  openai:
+    api_key: "YOUR_OPENAI_API_KEY"
+    base_url: "https://api.openai.com/v1"
+    model: "gpt-3.5-turbo"
+    max_tokens: 2000
+    temperature: 0.7
+
+  anthropic:
+    api_key: "YOUR_ANTHROPIC_API_KEY"
+    base_url: "https://api.anthropic.com/v1"
+    model: "claude-3-sonnet-20240229"
+    max_tokens: 2000
+
+monitoring:
+  prometheus:
+    port: 9090
+    scrape_interval: "15s"
+    retention_time: "15d"
+
+  grafana:
+    port: 3000
+    admin_user: "admin"
+    admin_password: "admin"
+
+  jaeger:
+    port: 16686
+    sampling_rate: 0.1
+
+logging:
+  level: "info"
+  format: "json"
+  output: "stdout"
+  file_path: "/var/log/qatoolbox"
+  max_size: "100MB"
+  max_age: "7d"
+  max_backups: 3

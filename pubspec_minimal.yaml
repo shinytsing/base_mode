@@ -1,0 +1,53 @@
+name: qa_toolbox_base
+description: QAToolBox App流水线生产基座 - 最小化版本
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+  flutter: ">=3.10.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  
+  # 状态管理
+  provider: ^6.1.1
+  riverpod: ^2.4.9
+  flutter_riverpod: ^2.4.9
+  
+  # 网络请求
+  dio: ^5.4.0
+  
+  # 本地存储
+  shared_preferences: ^2.2.2
+  
+  # UI组件
+  cupertino_icons: ^1.0.6
+  flutter_screenutil: ^5.9.0
+  
+  # 路由导航
+  go_router: ^12.1.3
+  
+  # 工具库
+  logger: ^2.0.2+1
+  
+  # 二维码
+  qr_flutter: ^4.1.0
+  
+  # 图表
+  fl_chart: ^0.66.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  
+  # 测试
+  flutter_lints: ^3.0.1
+
+flutter:
+  uses-material-design: true
+  
+  assets:
+    - assets/images/
+    - assets/icons/
+    - assets/fonts/

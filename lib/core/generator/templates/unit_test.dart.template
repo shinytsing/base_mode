@@ -1,0 +1,194 @@
+import 'package:flutter_test/flutter_test.dart';
+import 'package:mockito/mockito.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../../lib/features/{{appId}}/providers/{{appId}}_provider.dart';
+import '../../lib/features/{{appId}}/services/{{appId}}_service.dart';
+import '../../lib/features/{{appId}}/models/{{appId}}_model.dart';
+
+// 生成Mock类
+class Mock{{appName}}Service extends Mock implements {{appName}}Service {}
+
+void main() {
+  group('{{appName}} Provider Tests', () {
+    late Mock{{appName}}Service mockService;
+    late ProviderContainer container;
+
+    setUp(() {
+      mockService = Mock{{appName}}Service();
+      container = ProviderContainer(
+        overrides: [
+          {{appId}}ServiceProvider.overrideWithValue(mockService),
+        ],
+      );
+    });
+
+    tearDown(() {
+      container.dispose();
+    });
+
+    test('初始状态应该正确', () {
+      final state = container.read({{appId}}Provider);
+      
+      expect(state.data, isEmpty);
+      expect(state.isLoading, false);
+      expect(state.error, isNull);
+    });
+
+    test('应该能够加载数据', () async {
+      // 准备测试数据
+      final mockData = {
+        'data': [
+          {'id': '1', 'title': '测试数据1'},
+          {'id': '2', 'title': '测试数据2'},
+        ]
+      };
+
+      // 设置Mock行为
+      when(mockService.getData()).thenAnswer((_) async => mockData);
+
+      // 执行测试
+      final notifier = container.read({{appId}}Provider.notifier);
+      await notifier.refresh();
+
+      // 验证结果
+      final state = container.read({{appId}}Provider);
+      expect(state.isLoading, false);
+      expect(state.error, isNull);
+      verify(mockService.getData()).called(1);
+    });
+
+    test('应该能够处理错误', () async {
+      // 设置Mock抛出异常
+      when(mockService.getData()).thenThrow(Exception('网络错误'));
+
+      // 执行测试
+      final notifier = container.read({{appId}}Provider.notifier);
+      await notifier.refresh();
+
+      // 验证结果
+      final state = container.read({{appId}}Provider);
+      expect(state.isLoading, false);
+      expect(state.error, isNotNull);
+      expect(state.error, contains('网络错误'));
+    });
+
+    test('应该能够保存数据', () async {
+      // 准备测试数据
+      final testData = {{appName}}Data(
+        id: 'test-id',
+        title: '测试标题',
+        description: '测试描述',
+      );
+
+      final mockResponse = {'success': true, 'id': 'test-id'};
+
+      // 设置Mock行为
+      when(mockService.saveData(any)).thenAnswer((_) async => mockResponse);
+      when(mockService.getData()).thenAnswer((_) async => {'data': []});
+
+      // 执行测试
+      final notifier = container.read({{appId}}Provider.notifier);
+      await notifier.saveData(testData);
+
+      // 验证结果
+      verify(mockService.saveData(testData.toJson())).called(1);
+      verify(mockService.getData()).called(1);
+    });
+
+    test('应该能够更新设置', () async {
+      // 准备测试数据
+      final newSettings = {{appName}}Settings(
+        notifications: false,
+        theme: 'dark',
+      );
+
+      final mockResponse = {'success': true};
+
+      // 设置Mock行为
+      when(mockService.updateSettings(any)).thenAnswer((_) async => mockResponse);
+
+      // 执行测试
+      final notifier = container.read({{appId}}Provider.notifier);
+      await notifier.updateSettings(newSettings);
+
+      // 验证结果
+      final state = container.read({{appId}}Provider);
+      expect(state.settings, equals(newSettings));
+      verify(mockService.updateSettings(newSettings.toJson())).called(1);
+    });
+
+    test('应该能够清除错误', () {
+      // 设置初始错误状态
+      container.read({{appId}}Provider.notifier).state = 
+          container.read({{appId}}Provider).copyWith(error: '测试错误');
+
+      // 执行清除错误
+      container.read({{appId}}Provider.notifier).clearError();
+
+      // 验证结果
+      final state = container.read({{appId}}Provider);
+      expect(state.error, isNull);
+    });
+  });
+
+  group('{{appName}} Model Tests', () {
+    test('应该能够从JSON创建模型', () {
+      final json = {
+        'id': 'test-id',
+        'title': '测试标题',
+        'description': '测试描述',
+        'metadata': {'key': 'value'},
+        'created_at': '2024-01-01T00:00:00Z',
+        'updated_at': '2024-01-01T00:00:00Z',
+      };
+
+      final model = {{appName}}Data.fromJson(json);
+
+      expect(model.id, equals('test-id'));
+      expect(model.title, equals('测试标题'));
+      expect(model.description, equals('测试描述'));
+      expect(model.metadata, equals({'key': 'value'}));
+    });
+
+    test('应该能够转换为JSON', () {
+      final model = {{appName}}Data(
+        id: 'test-id',
+        title: '测试标题',
+        description: '测试描述',
+        metadata: {'key': 'value'},
+      );
+
+      final json = model.toJson();
+
+      expect(json['id'], equals('test-id'));
+      expect(json['title'], equals('测试标题'));
+      expect(json['description'], equals('测试描述'));
+      expect(json['metadata'], equals({'key': 'value'}));
+    });
+  });
+
+  group('{{appName}} Settings Tests', () {
+    test('应该有正确的默认值', () {
+      const settings = {{appName}}Settings();
+
+      expect(settings.notifications, true);
+      expect(settings.theme, 'light');
+      expect(settings.preferences, isEmpty);
+    });
+
+    test('应该能够从JSON创建设置', () {
+      final json = {
+        'notifications': false,
+        'theme': 'dark',
+        'preferences': {'key': 'value'},
+      };
+
+      final settings = {{appName}}Settings.fromJson(json);
+
+      expect(settings.notifications, false);
+      expect(settings.theme, 'dark');
+      expect(settings.preferences, equals({'key': 'value'}));
+    });
+  });
+}

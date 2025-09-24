@@ -1,0 +1,107 @@
+templates:
+  main_page:
+    path: "lib/core/generator/templates/main_page.dart.template"
+    description: "主页面模板"
+    variables:
+      - "appName"
+      - "appId"
+      - "description"
+      - "icon"
+      - "color"
+      - "features"
+    
+  service:
+    path: "lib/core/generator/templates/service.dart.template"
+    description: "服务层模板"
+    variables:
+      - "appName"
+      - "appId"
+      
+  model:
+    path: "lib/core/generator/templates/model.dart.template"
+    description: "数据模型模板"
+    variables:
+      - "appName"
+      - "appId"
+      
+  provider:
+    path: "lib/core/generator/templates/provider.dart.template"
+    description: "状态管理模板"
+    variables:
+      - "appName"
+      - "appId"
+      
+  feature_page:
+    path: "lib/core/generator/templates/feature_page.dart.template"
+    description: "功能页面模板"
+    variables:
+      - "featureName"
+      - "featureId"
+      - "appId"
+      
+  feature_widget:
+    path: "lib/core/generator/templates/feature_widget.dart.template"
+    description: "功能组件模板"
+    variables:
+      - "featureName"
+      - "featureId"
+      - "appId"
+      
+  unit_test:
+    path: "lib/core/generator/templates/unit_test.dart.template"
+    description: "单元测试模板"
+    variables:
+      - "appName"
+      - "appId"
+      
+  widget_test:
+    path: "lib/core/generator/templates/widget_test.dart.template"
+    description: "Widget测试模板"
+    variables:
+      - "appName"
+      - "appId"
+      
+  app_documentation:
+    path: "lib/core/generator/templates/app_documentation.md.template"
+    description: "应用文档模板"
+    variables:
+      - "appName"
+      - "description"
+      - "category"
+      - "features"
+
+# AI配置
+ai_templates:
+  openai:
+    enabled: true
+    model: "gpt-3.5-turbo"
+    max_tokens: 2000
+    temperature: 0.7
+    
+  anthropic:
+    enabled: false
+    model: "claude-3-sonnet-20240229"
+    max_tokens: 2000
+    
+# 代码生成配置
+code_generation:
+  auto_format: true
+  auto_import: true
+  generate_tests: true
+  generate_docs: true
+  use_freezed: true
+  use_riverpod: true
+  
+# 质量控制
+quality_checks:
+  lint_analysis: true
+  static_analysis: true
+  test_coverage: true
+  min_coverage: 80
+  
+# 自定义变量
+custom_variables:
+  company_name: "QAToolBox"
+  copyright_year: "2024"
+  license: "MIT"
+  author: "QAToolBox Team"

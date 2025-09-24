@@ -1,0 +1,265 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../../lib/features/{{appId}}/pages/{{appId}}_page.dart';
+import '../../lib/features/{{appId}}/providers/{{appId}}_provider.dart';
+import '../../lib/features/{{appId}}/models/{{appId}}_model.dart';
+
+void main() {
+  group('{{appName}} Page Widget Tests', () {
+    testWidgets('应该显示应用标题', (WidgetTester tester) async {
+      // 创建测试容器
+      final container = ProviderContainer(
+        overrides: [
+          {{appId}}Provider.overrideWith((ref) => _create{{appName}}Notifier()),
+        ],
+      );
+
+      // 构建Widget
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: MaterialApp(
+            home: {{appName}}Page(),
+          ),
+        ),
+      );
+
+      // 验证标题存在
+      expect(find.text('{{appName}}'), findsOneWidget);
+      
+      // 清理
+      container.dispose();
+    });
+
+    testWidgets('应该显示加载指示器', (WidgetTester tester) async {
+      // 创建加载状态的测试容器
+      final container = ProviderContainer(
+        overrides: [
+          {{appId}}Provider.overrideWith((ref) => _create{{appName}}NotifierWithLoading()),
+        ],
+      );
+
+      // 构建Widget
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: MaterialApp(
+            home: {{appName}}Page(),
+          ),
+        ),
+      );
+
+      // 验证加载指示器存在
+      expect(find.byType(CircularProgressIndicator), findsOneWidget);
+      
+      // 清理
+      container.dispose();
+    });
+
+    testWidgets('应该显示错误信息', (WidgetTester tester) async {
+      const errorMessage = '测试错误信息';
+      
+      // 创建错误状态的测试容器
+      final container = ProviderContainer(
+        overrides: [
+          {{appId}}Provider.overrideWith((ref) => _create{{appName}}NotifierWithError(errorMessage)),
+        ],
+      );
+
+      // 构建Widget
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: MaterialApp(
+            home: {{appName}}Page(),
+          ),
+        ),
+      );
+
+      // 验证错误信息存在
+      expect(find.text('出现错误'), findsOneWidget);
+      expect(find.text(errorMessage), findsOneWidget);
+      
+      // 清理
+      container.dispose();
+    });
+
+    testWidgets('应该显示功能列表', (WidgetTester tester) async {
+      // 创建有数据的测试容器
+      final container = ProviderContainer(
+        overrides: [
+          {{appId}}Provider.overrideWith((ref) => _create{{appName}}NotifierWithData()),
+        ],
+      );
+
+      // 构建Widget
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: MaterialApp(
+            home: {{appName}}Page(),
+          ),
+        ),
+      );
+
+      // 验证功能列表存在
+      expect(find.text('核心功能'), findsOneWidget);
+      
+      // 清理
+      container.dispose();
+    });
+
+    testWidgets('应该能够点击设置按钮', (WidgetTester tester) async {
+      final container = ProviderContainer(
+        overrides: [
+          {{appId}}Provider.overrideWith((ref) => _create{{appName}}Notifier()),
+        ],
+      );
+
+      // 构建Widget
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: MaterialApp(
+            home: {{appName}}Page(),
+          ),
+        ),
+      );
+
+      // 查找设置按钮并点击
+      final settingsButton = find.byIcon(Icons.settings_outlined);
+      expect(settingsButton, findsOneWidget);
+      
+      await tester.tap(settingsButton);
+      await tester.pump();
+
+      // 验证点击没有引发错误
+      expect(tester.takeException(), isNull);
+      
+      // 清理
+      container.dispose();
+    });
+
+    testWidgets('应该能够点击快速操作按钮', (WidgetTester tester) async {
+      final container = ProviderContainer(
+        overrides: [
+          {{appId}}Provider.overrideWith((ref) => _create{{appName}}Notifier()),
+        ],
+      );
+
+      // 构建Widget
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: MaterialApp(
+            home: {{appName}}Page(),
+          ),
+        ),
+      );
+
+      // 查找快速操作按钮
+      final actionButtons = find.text('开始使用');
+      if (actionButtons.evaluate().isNotEmpty) {
+        await tester.tap(actionButtons.first);
+        await tester.pump();
+
+        // 验证点击没有引发错误
+        expect(tester.takeException(), isNull);
+      }
+      
+      // 清理
+      container.dispose();
+    });
+
+    testWidgets('应该显示应用介绍卡片', (WidgetTester tester) async {
+      final container = ProviderContainer(
+        overrides: [
+          {{appId}}Provider.overrideWith((ref) => _create{{appName}}Notifier()),
+        ],
+      );
+
+      // 构建Widget
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: MaterialApp(
+            home: {{appName}}Page(),
+          ),
+        ),
+      );
+
+      // 验证应用介绍卡片存在
+      expect(find.byType(Container), findsWidgets);
+      
+      // 清理
+      container.dispose();
+    });
+  });
+}
+
+// 测试辅助方法
+
+/// 创建正常状态的{{appName}}Notifier
+_create{{appName}}Notifier() {
+  return _Test{{appName}}Notifier({{appName}}State(
+    settings: {{appName}}Settings(),
+  ));
+}
+
+/// 创建加载状态的{{appName}}Notifier
+_create{{appName}}NotifierWithLoading() {
+  return _Test{{appName}}Notifier({{appName}}State(
+    settings: {{appName}}Settings(),
+    isLoading: true,
+  ));
+}
+
+/// 创建错误状态的{{appName}}Notifier
+_create{{appName}}NotifierWithError(String error) {
+  return _Test{{appName}}Notifier({{appName}}State(
+    settings: {{appName}}Settings(),
+    error: error,
+  ));
+}
+
+/// 创建有数据状态的{{appName}}Notifier
+_create{{appName}}NotifierWithData() {
+  return _Test{{appName}}Notifier({{appName}}State(
+    settings: {{appName}}Settings(),
+    data: [
+      {{appName}}Data(
+        id: 'test-1',
+        title: '测试数据1',
+        description: '测试描述1',
+      ),
+      {{appName}}Data(
+        id: 'test-2',
+        title: '测试数据2',
+        description: '测试描述2',
+      ),
+    ],
+  ));
+}
+
+/// 测试用的{{appName}}Notifier
+class _Test{{appName}}Notifier extends StateNotifier<{{appName}}State> {
+  _Test{{appName}}Notifier({{appName}}State state) : super(state);
+
+  void clearError() {
+    state = state.copyWith(error: null);
+  }
+
+  Future<void> refresh() async {
+    // 测试用的刷新方法
+  }
+
+  Future<void> saveData({{appName}}Data data) async {
+    // 测试用的保存方法
+  }
+
+  Future<void> updateSettings({{appName}}Settings settings) async {
+    state = state.copyWith(settings: settings);
+  }
+}

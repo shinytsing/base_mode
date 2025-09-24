@@ -1,0 +1,5 @@
+---
+description:别简化功能别重写已经有的功能，可以修改
+globs:all
+alwaysApply: true
+---

@@ -1,0 +1,63 @@
+import 'package:freezed_annotation/freezed_annotation.dart';
+
+part '{{appId}}_model.freezed.dart';
+part '{{appId}}_model.g.dart';
+
+@freezed
+class {{appName}}Data with _\${{appName}}Data {
+  const factory {{appName}}Data({
+    required String id,
+    required String title,
+    String? description,
+    @Default({}) Map<String, dynamic> metadata,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) = _{{appName}}Data;
+
+  factory {{appName}}Data.fromJson(Map<String, dynamic> json) => 
+      _\${{appName}}DataFromJson(json);
+}
+
+@freezed
+class {{appName}}Settings with _\${{appName}}Settings {
+  const factory {{appName}}Settings({
+    @Default(true) bool notifications,
+    @Default('light') String theme,
+    @Default({}) Map<String, dynamic> preferences,
+  }) = _{{appName}}Settings;
+
+  factory {{appName}}Settings.fromJson(Map<String, dynamic> json) => 
+      _\${{appName}}SettingsFromJson(json);
+}
+
+@freezed
+class {{appName}}Feature with _\${{appName}}Feature {
+  const factory {{appName}}Feature({
+    required String id,
+    required String name,
+    required String description,
+    @Default(false) bool isEnabled,
+    @Default({}) Map<String, dynamic> config,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) = _{{appName}}Feature;
+
+  factory {{appName}}Feature.fromJson(Map<String, dynamic> json) => 
+      _\${{appName}}FeatureFromJson(json);
+}
+
+@freezed
+class {{appName}}User with _\${{appName}}User {
+  const factory {{appName}}User({
+    required String id,
+    required String email,
+    required String username,
+    @Default('free') String membershipLevel,
+    @Default({}) Map<String, dynamic> preferences,
+    DateTime? createdAt,
+    DateTime? lastLoginAt,
+  }) = _{{appName}}User;
+
+  factory {{appName}}User.fromJson(Map<String, dynamic> json) => 
+      _\${{appName}}UserFromJson(json);
+}
