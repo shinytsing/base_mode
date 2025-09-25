@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:pedometer/pedometer.dart';
 import 'package:sensors_plus/sensors_plus.dart';
-import 'package:health/health.dart';
+// import 'package:health/health.dart'; // 暂时移除，有版本兼容性问题
 import 'package:permission_handler/permission_handler.dart';
 import 'package:logger/logger.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -23,88 +23,137 @@ class RealHealthService {
   StreamSubscription<GyroscopeEvent>? _gyroscopeSubscription;
   
   // 健康数据
-  Health? _health;
+  // Health? _health; // 暂时注释，有版本兼容性问题
   bool _isHealthDataAvailable = false;
   
   // 数据存储
   SharedPreferences? _prefs;
   
   // 数据流控制器
-  final StreamController<Map<String, dynamic>> _healthDataController = 
+  final StreamController<Map<String, dynamic>> _dataController = 
       StreamController<Map<String, dynamic>>.broadcast();
   
-  Stream<Map<String, dynamic>> get healthDataStream => _healthDataController.stream;
+  Stream<Map<String, dynamic>> get dataStream => _dataController.stream;
   
   // 当前数据
-  Map<String, dynamic> _currentData = {
-    'steps': 0,
-    'distance': 0.0,
-    'calories': 0.0,
-    'heartRate': 0,
-    'bloodPressure': {'systolic': 0, 'diastolic': 0},
-    'weight': 0.0,
-    'bodyFat': 0.0,
-    'muscleMass': 0.0,
-    'waterIntake': 0.0,
-    'sleepHours': 0.0,
-    'accelerometer': {'x': 0.0, 'y': 0.0, 'z': 0.0},
-    'gyroscope': {'x': 0.0, 'y': 0.0, 'z': 0.0},
-    'isWalking': false,
-    'lastUpdate': DateTime.now(),
-  };
-
-  /// 初始化真实健康服务
-  Future<bool> initialize() async {
+  Map<String, dynamic> _currentData = {};
+  
+  /// 初始化服务
+  Future<void> initialize() async {
     try {
       _logger.i('初始化真实健康服务...');
       
-      // 初始化SharedPreferences
+      // 初始化存储
       _prefs = await SharedPreferences.getInstance();
       
-      // 请求权限
-      await _requestPermissions();
+      // 初始化传感器
+      await _initializeSensors();
       
       // 初始化健康数据
       await _initializeHealth();
       
-      // 开始监听真实传感器
-      await _startRealSensorListening();
-      
-      // 加载历史数据
-      await _loadHistoricalData();
-      
       _logger.i('真实健康服务初始化完成');
-      return true;
     } catch (e) {
-      _logger.e('真实健康服务初始化失败: $e');
-      return false;
+      _logger.e('初始化真实健康服务失败: $e');
     }
   }
 
-  /// 请求必要权限
-  Future<void> _requestPermissions() async {
-    final permissions = [
-      Permission.activityRecognition,
-      Permission.sensors,
-      Permission.notification,
-      Permission.location,
-    ];
-    
-    for (final permission in permissions) {
-      final status = await permission.request();
-      _logger.i('权限 $permission: $status');
+  /// 初始化传感器
+  Future<void> _initializeSensors() async {
+    try {
+      // 请求传感器权限
+      final permission = await Permission.sensors.request();
+      if (permission.isGranted) {
+        _logger.i('传感器权限已授予');
+        
+        // 初始化计步器
+        await _initializePedometer();
+        
+        // 初始化加速度计和陀螺仪
+        await _initializeMotionSensors();
+      } else {
+        _logger.w('传感器权限被拒绝');
+      }
+    } catch (e) {
+      _logger.e('初始化传感器失败: $e');
     }
-    
-    // 请求健康数据权限
-    if (Platform.isIOS) {
-      // iOS健康权限请求
+  }
+
+  /// 初始化计步器
+  Future<void> _initializePedometer() async {
+    try {
+      // 监听步数变化
+      _stepCountSubscription = Pedometer.stepCountStream.listen(
+        (StepCount event) {
+          _currentData['steps'] = event.steps;
+          _currentData['distance'] = event.steps * 0.7; // 假设每步0.7米
+          _dataController.add(Map.from(_currentData));
+        },
+        onError: (error) {
+          _logger.e('计步器错误: $error');
+        },
+      );
+
+      // 监听步行状态
+      _pedestrianStatusSubscription = Pedometer.pedestrianStatusStream.listen(
+        (PedestrianStatus event) {
+          _currentData['isWalking'] = event.status == 'walking';
+          _dataController.add(Map.from(_currentData));
+        },
+        onError: (error) {
+          _logger.e('步行状态错误: $error');
+        },
+      );
+
+      _logger.i('计步器初始化完成');
+    } catch (e) {
+      _logger.e('初始化计步器失败: $e');
+    }
+  }
+
+  /// 初始化运动传感器
+  Future<void> _initializeMotionSensors() async {
+    try {
+      // 监听加速度计
+      _accelerometerSubscription = accelerometerEvents.listen(
+        (AccelerometerEvent event) {
+          _currentData['acceleration'] = {
+            'x': event.x,
+            'y': event.y,
+            'z': event.z,
+          };
+          _dataController.add(Map.from(_currentData));
+        },
+        onError: (error) {
+          _logger.e('加速度计错误: $error');
+        },
+      );
+
+      // 监听陀螺仪
+      _gyroscopeSubscription = gyroscopeEvents.listen(
+        (GyroscopeEvent event) {
+          _currentData['gyroscope'] = {
+            'x': event.x,
+            'y': event.y,
+            'z': event.z,
+          };
+          _dataController.add(Map.from(_currentData));
+        },
+        onError: (error) {
+          _logger.e('陀螺仪错误: $error');
+        },
+      );
+
+      _logger.i('运动传感器初始化完成');
+    } catch (e) {
+      _logger.e('初始化运动传感器失败: $e');
     }
   }
 
   /// 初始化健康数据
   Future<void> _initializeHealth() async {
     try {
-      _health = Health();
+      // _health = Health(); // 暂时注释
       
       // 检查健康数据是否可用
       _isHealthDataAvailable = true; // 简化处理
@@ -113,24 +162,24 @@ class RealHealthService {
         _logger.i('健康数据可用');
         
         // 请求健康数据权限
-        final types = [
-          HealthDataType.STEPS,
-          HealthDataType.DISTANCE_DELTA,
-          HealthDataType.ACTIVE_ENERGY_BURNED,
-          HealthDataType.HEART_RATE,
-          HealthDataType.BLOOD_PRESSURE_SYSTOLIC,
-          HealthDataType.BLOOD_PRESSURE_DIASTOLIC,
-          HealthDataType.WEIGHT,
-          HealthDataType.BODY_FAT_PERCENTAGE,
-          HealthDataType.WATER,
-          HealthDataType.SLEEP_IN_BED,
-          HealthDataType.WORKOUT,
-        ];
+        // final types = [
+        //   HealthDataType.STEPS,
+        //   HealthDataType.DISTANCE_DELTA,
+        //   HealthDataType.ACTIVE_ENERGY_BURNED,
+        //   HealthDataType.HEART_RATE,
+        //   HealthDataType.BLOOD_PRESSURE_SYSTOLIC,
+        //   HealthDataType.BLOOD_PRESSURE_DIASTOLIC,
+        //   HealthDataType.WEIGHT,
+        //   HealthDataType.BODY_FAT_PERCENTAGE,
+        //   HealthDataType.WATER,
+        //   HealthDataType.SLEEP_IN_BED,
+        //   HealthDataType.WORKOUT,
+        // ];
         
-        final permissions = List.generate(types.length, (index) => HealthDataAccess.READ);
+        // final permissions = List.generate(types.length, (index) => HealthDataAccess.READ);
         
-        final granted = await _health!.requestAuthorization(types, permissions: permissions);
-        _logger.i('健康数据权限: $granted');
+        // final granted = await _health!.requestAuthorization(types, permissions: permissions);
+        // _logger.i('健康数据权限: $granted');
       } else {
         _logger.w('健康数据不可用');
       }
@@ -139,306 +188,13 @@ class RealHealthService {
     }
   }
 
-  /// 开始监听真实传感器
-  Future<void> _startRealSensorListening() async {
-    try {
-      // 监听步数变化
-      _stepCountSubscription = Pedometer.stepCountStream.listen(
-        (StepCount event) {
-          _currentData['steps'] = event.steps;
-          _currentData['distance'] = _calculateDistance(event.steps);
-          _currentData['calories'] = _calculateCalories(event.steps);
-          _currentData['lastUpdate'] = event.timeStamp;
-          _updateHealthData();
-          _saveToLocalStorage();
-        },
-        onError: (error) {
-          _logger.e('步数监听错误: $error');
-        },
-      );
-
-      // 监听步行状态
-      _pedestrianStatusSubscription = Pedometer.pedestrianStatusStream.listen(
-        (PedestrianStatus event) {
-          _currentData['isWalking'] = event.status.toString().contains('walking');
-          _updateHealthData();
-        },
-        onError: (error) {
-          _logger.e('步行状态监听错误: $error');
-        },
-      );
-
-      // 监听加速度计
-      _accelerometerSubscription = accelerometerEvents.listen((AccelerometerEvent event) {
-        _currentData['accelerometer'] = {
-          'x': event.x,
-          'y': event.y,
-          'z': event.z,
-        };
-        _updateHealthData();
-      });
-
-      // 监听陀螺仪
-      _gyroscopeSubscription = gyroscopeEvents.listen((GyroscopeEvent event) {
-        _currentData['gyroscope'] = {
-          'x': event.x,
-          'y': event.y,
-          'z': event.z,
-        };
-        _updateHealthData();
-      });
-
-      _logger.i('真实传感器监听已启动');
-    } catch (e) {
-      _logger.e('启动真实传感器监听失败: $e');
-    }
-  }
-
-  /// 更新健康数据
-  void _updateHealthData() {
-    _currentData['distance'] = _calculateDistance(_currentData['steps']);
-    _currentData['calories'] = _calculateCalories(_currentData['steps']);
-    
-    _healthDataController.add(Map.from(_currentData));
-  }
-
-  /// 计算距离（米）
-  double _calculateDistance(int steps) {
-    // 根据用户身高调整步长
-    final height = _prefs?.getDouble('user_height') ?? 175.0;
-    final stepLength = height * 0.43 / 100; // 身高 * 0.43% 作为步长
-    return steps * stepLength;
-  }
-
-  /// 计算卡路里
-  double _calculateCalories(int steps) {
-    final weight = _prefs?.getDouble('user_weight') ?? 70.0;
-    final height = _prefs?.getDouble('user_height') ?? 175.0;
-    final age = _prefs?.getInt('user_age') ?? 30;
-    
-    // 使用Harris-Benedict公式计算BMR
-    final bmr = _calculateBMR(weight, height, age);
-    
-    // 每1000步消耗约0.04 * BMR的卡路里
-    return (steps / 1000) * (bmr * 0.04);
-  }
-
-  /// 计算基础代谢率
-  double _calculateBMR(double weight, double height, int age) {
-    // Harris-Benedict公式 (男性)
-    return 88.362 + (13.397 * weight) + (4.799 * height) - (5.677 * age);
-  }
-
-  /// 获取真实健康数据
-  Future<Map<String, dynamic>> getRealHealthData({
-    DateTime? startDate,
-    DateTime? endDate,
+  /// 获取健康数据
+  Future<Map<String, dynamic>> getHealthData({
+    DateTime? start,
+    DateTime? end,
   }) async {
-    if (!_isHealthDataAvailable || _health == null) {
-      return _currentData;
-    }
-
-    try {
-      final now = DateTime.now();
-      final start = startDate ?? DateTime(now.year, now.month, now.day);
-      final end = endDate ?? now;
-
-      final types = [
-        HealthDataType.STEPS,
-        HealthDataType.DISTANCE_DELTA,
-        HealthDataType.ACTIVE_ENERGY_BURNED,
-        HealthDataType.HEART_RATE,
-        HealthDataType.BLOOD_PRESSURE_SYSTOLIC,
-        HealthDataType.BLOOD_PRESSURE_DIASTOLIC,
-        HealthDataType.WEIGHT,
-          HealthDataType.BODY_FAT_PERCENTAGE,
-        HealthDataType.WATER,
-        HealthDataType.SLEEP_IN_BED,
-      ];
-
-      final healthData = await _health!.getHealthDataFromTypes(
-        types: types,
-        startTime: start,
-        endTime: end,
-      );
-
-      final result = <String, dynamic>{};
-      
-      for (final data in healthData) {
-        switch (data.type) {
-          case HealthDataType.STEPS:
-            result['steps'] = data.value;
-            break;
-          case HealthDataType.DISTANCE_DELTA:
-            result['distance'] = data.value;
-            break;
-          case HealthDataType.ACTIVE_ENERGY_BURNED:
-            result['calories'] = data.value;
-            break;
-          case HealthDataType.HEART_RATE:
-            result['heartRate'] = data.value;
-            break;
-          case HealthDataType.BLOOD_PRESSURE_SYSTOLIC:
-            result['bloodPressure'] = {
-              'systolic': data.value,
-              'diastolic': result['bloodPressure']?['diastolic'] ?? 0,
-            };
-            break;
-          case HealthDataType.BLOOD_PRESSURE_DIASTOLIC:
-            result['bloodPressure'] = {
-              'systolic': result['bloodPressure']?['systolic'] ?? 0,
-              'diastolic': data.value,
-            };
-            break;
-          case HealthDataType.WEIGHT:
-            result['weight'] = data.value;
-            break;
-          case HealthDataType.BODY_FAT_PERCENTAGE:
-            result['bodyFat'] = data.value;
-            break;
-          case HealthDataType.BODY_FAT_PERCENTAGE:
-            result['muscleMass'] = data.value;
-            break;
-          case HealthDataType.WATER:
-            result['waterIntake'] = data.value;
-            break;
-          case HealthDataType.SLEEP_IN_BED:
-            result['sleepHours'] = data.value;
-            break;
-          default:
-            break;
-        }
-      }
-
-      // 合并当前传感器数据
-      result.addAll(_currentData);
-      return result;
-    } catch (e) {
-      _logger.e('获取真实健康数据失败: $e');
-      return _currentData;
-    }
-  }
-
-  /// 记录训练数据
-  Future<void> recordWorkout({
-    required String workoutType,
-    required int duration,
-    required double calories,
-    Map<String, dynamic>? additionalData,
-  }) async {
-    try {
-      final workoutData = {
-        'id': DateTime.now().millisecondsSinceEpoch.toString(),
-        'type': workoutType,
-        'duration': duration,
-        'calories': calories,
-        'timestamp': DateTime.now().toIso8601String(),
-        'additionalData': additionalData ?? {},
-      };
-
-      // 保存到本地存储
-      final workouts = _prefs?.getStringList('workouts') ?? [];
-      workouts.add(workoutData.toString());
-      await _prefs?.setStringList('workouts', workouts);
-
-      // 更新当前数据
-      _currentData['calories'] = (_currentData['calories'] ?? 0.0) + calories;
-      _updateHealthData();
-
-      _logger.i('训练数据记录成功: $workoutType');
-    } catch (e) {
-      _logger.e('记录训练数据失败: $e');
-    }
-  }
-
-  /// 记录营养数据
-  Future<void> recordNutrition({
-    required String foodName,
-    required double calories,
-    required double protein,
-    required double carbs,
-    required double fat,
-    required double quantity,
-    required String unit,
-  }) async {
-    try {
-      final nutritionData = {
-        'id': DateTime.now().millisecondsSinceEpoch.toString(),
-        'foodName': foodName,
-        'calories': calories,
-        'protein': protein,
-        'carbs': carbs,
-        'fat': fat,
-        'quantity': quantity,
-        'unit': unit,
-        'timestamp': DateTime.now().toIso8601String(),
-      };
-
-      // 保存到本地存储
-      final nutrition = _prefs?.getStringList('nutrition') ?? [];
-      nutrition.add(nutritionData.toString());
-      await _prefs?.setStringList('nutrition', nutrition);
-
-      _logger.i('营养数据记录成功: $foodName');
-    } catch (e) {
-      _logger.e('记录营养数据失败: $e');
-    }
-  }
-
-  /// 记录体重数据
-  Future<void> recordWeight(double weight) async {
-    try {
-      await _prefs?.setDouble('user_weight', weight);
-      _currentData['weight'] = weight;
-      _updateHealthData();
-      _logger.i('体重记录成功: $weight kg');
-    } catch (e) {
-      _logger.e('记录体重失败: $e');
-    }
-  }
-
-  /// 记录饮水数据
-  Future<void> recordWaterIntake(double amount) async {
-    try {
-      final today = DateFormat('yyyy-MM-dd').format(DateTime.now());
-      final key = 'water_intake_$today';
-      final currentIntake = _prefs?.getDouble(key) ?? 0.0;
-      await _prefs?.setDouble(key, currentIntake + amount);
-      
-      _currentData['waterIntake'] = currentIntake + amount;
-      _updateHealthData();
-      _logger.i('饮水记录成功: $amount ml');
-    } catch (e) {
-      _logger.e('记录饮水失败: $e');
-    }
-  }
-
-  /// 加载历史数据
-  Future<void> _loadHistoricalData() async {
-    try {
-      // 加载用户基本信息
-      _currentData['weight'] = _prefs?.getDouble('user_weight') ?? 0.0;
-      
-      // 加载今日饮水
-      final today = DateFormat('yyyy-MM-dd').format(DateTime.now());
-      final waterKey = 'water_intake_$today';
-      _currentData['waterIntake'] = _prefs?.getDouble(waterKey) ?? 0.0;
-      
-      _updateHealthData();
-    } catch (e) {
-      _logger.e('加载历史数据失败: $e');
-    }
-  }
-
-  /// 保存到本地存储
-  Future<void> _saveToLocalStorage() async {
-    try {
-      await _prefs?.setInt('daily_steps', _currentData['steps']);
-      await _prefs?.setDouble('daily_distance', _currentData['distance']);
-      await _prefs?.setDouble('daily_calories', _currentData['calories']);
-    } catch (e) {
-      _logger.e('保存到本地存储失败: $e');
-    }
+    // 暂时返回空数据，避免health插件兼容性问题
+    return {};
   }
 
   /// 获取当前数据
@@ -446,24 +202,76 @@ class RealHealthService {
     return Map.from(_currentData);
   }
 
-  /// 获取步数
-  int get stepCount => _currentData['steps'] ?? 0;
+  /// 保存数据到本地
+  Future<void> saveData(Map<String, dynamic> data) async {
+    try {
+      if (_prefs != null) {
+        final jsonString = data.toString();
+        await _prefs!.setString('health_data_${DateTime.now().millisecondsSinceEpoch}', jsonString);
+        _logger.i('数据已保存到本地');
+      }
+    } catch (e) {
+      _logger.e('保存数据失败: $e');
+    }
+  }
 
-  /// 获取距离
-  double get distance => _currentData['distance'] ?? 0.0;
+  /// 从本地加载数据
+  Future<List<Map<String, dynamic>>> loadData() async {
+    try {
+      if (_prefs != null) {
+        final keys = _prefs!.getKeys().where((key) => key.startsWith('health_data_'));
+        final dataList = <Map<String, dynamic>>[];
+        
+        for (final key in keys) {
+          final jsonString = _prefs!.getString(key);
+          if (jsonString != null) {
+            // 简化处理，实际应该解析JSON
+            dataList.add({'timestamp': key, 'data': jsonString});
+          }
+        }
+        
+        return dataList;
+      }
+    } catch (e) {
+      _logger.e('加载数据失败: $e');
+    }
+    
+    return [];
+  }
 
-  /// 获取卡路里
-  double get calories => _currentData['calories'] ?? 0.0;
-
-  /// 是否正在步行
-  bool get isWalking => _currentData['isWalking'] ?? false;
+  /// 清理数据
+  Future<void> clearData() async {
+    try {
+      if (_prefs != null) {
+        final keys = _prefs!.getKeys().where((key) => key.startsWith('health_data_'));
+        for (final key in keys) {
+          await _prefs!.remove(key);
+        }
+        _logger.i('数据已清理');
+      }
+    } catch (e) {
+      _logger.e('清理数据失败: $e');
+    }
+  }
 
   /// 停止服务
+  Future<void> stop() async {
+    try {
+      await _stepCountSubscription?.cancel();
+      await _pedestrianStatusSubscription?.cancel();
+      await _accelerometerSubscription?.cancel();
+      await _gyroscopeSubscription?.cancel();
+      
+      await _dataController.close();
+      
+      _logger.i('真实健康服务已停止');
+    } catch (e) {
+      _logger.e('停止真实健康服务失败: $e');
+    }
+  }
+
+  /// 释放资源
   void dispose() {
-    _stepCountSubscription?.cancel();
-    _pedestrianStatusSubscription?.cancel();
-    _accelerometerSubscription?.cancel();
-    _gyroscopeSubscription?.cancel();
-    _healthDataController.close();
+    stop();
   }
 }

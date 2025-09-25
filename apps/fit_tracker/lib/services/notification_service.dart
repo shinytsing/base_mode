@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
-import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+// import 'package:flutter_local_notifications/flutter_local_notifications.dart'; // 暂时移除
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -14,8 +14,8 @@ class NotificationService {
   NotificationService._internal();
 
   final Logger _logger = Logger();
-  final FlutterLocalNotificationsPlugin _localNotifications = 
-      FlutterLocalNotificationsPlugin();
+  // final FlutterLocalNotificationsPlugin _localNotifications = 
+  //     FlutterLocalNotificationsPlugin(); // 暂时移除
   
   FirebaseMessaging? _firebaseMessaging;
   String? _fcmToken;
@@ -38,7 +38,7 @@ class NotificationService {
       await _initializeFirebase();
       
       // 初始化本地通知
-      await _initializeLocalNotifications();
+      // await _initializeLocalNotifications(); // 暂时移除
       
       // 请求通知权限
       await _requestNotificationPermission();
@@ -77,6 +77,8 @@ class NotificationService {
 
   /// 初始化本地通知
   Future<void> _initializeLocalNotifications() async {
+    // 暂时移除本地通知功能
+    return;
     const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
     const iosSettings = DarwinInitializationSettings(
       requestAlertPermission: true,

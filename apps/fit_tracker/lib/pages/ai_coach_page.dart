@@ -32,10 +32,10 @@ class _AICoachPageState extends State<AICoachPage> with TickerProviderStateMixin
 
   Future<void> _initializeServices() async {
     try {
-      final healthInitialized = await _healthService.initialize();
+      await _healthService.initialize();
       final coachInitialized = await _aiCoachService.initialize();
       
-      if (healthInitialized && coachInitialized) {
+      if (coachInitialized) {
         setState(() {
           _isInitialized = true;
         });
