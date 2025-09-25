@@ -156,15 +156,15 @@ func (m *AIClientManager) GetAvailableClients() []AIClient {
 	
 	// 按优先级排序
 	priority := []AIServiceType{
-		AIServiceAIMLAPI,     // 最高优先级
+		AIServiceTencent,     // 最高优先级 - 腾讯混元，国内稳定
+		AIServiceDeepSeek,    // 第二优先级 - DeepSeek，功能强大
+		AIServiceAIMLAPI,     // 第三优先级 - 聚合服务
 		AIServiceAITools,     // 无需登录
 		AIServiceGroq,        // 免费额度大
 		AIServiceXunfei,      // 完全免费
 		AIServiceBaidu,       // 免费额度
-		AIServiceTencent,     // 免费版本
 		AIServiceBytedance,   // 开发者免费
 		AIServiceSiliconFlow, // 免费额度
-		AIServiceDeepSeek,    // 备用
 		AIServiceTogether,    // 有免费额度
 		AIServiceOpenRouter,  // 聚合多个模型
 	}
@@ -196,6 +196,122 @@ func (m *AIClientManager) GenerateText(ctx context.Context, req *AIRequest) (*AI
 	}
 	
 	return nil, fmt.Errorf("所有AI服务都不可用")
+}
+
+// GenerateTestCases 生成测试用例
+func (m *AIClientManager) GenerateTestCases(code, language, testType string) (string, error) {
+	prompt := fmt.Sprintf(`
+请为以下%s代码生成%s测试用例：
+
+代码：
+%s
+
+要求：
+1. 生成完整的测试用例代码
+2. 包含边界条件测试
+3. 包含异常情况测试
+4. 使用适当的测试框架
+5. 代码要有注释说明
+
+请直接返回测试用例代码，不要其他解释。
+`, language, testType, code)
+
+	req := &AIRequest{
+		Model: "gpt-3.5-turbo",
+		Messages: []AIMessage{
+			{Role: "system", Content: "你是一个专业的软件测试工程师，擅长生成高质量的测试用例。"},
+			{Role: "user", Content: prompt},
+		},
+		Temperature: 0.7,
+		MaxTokens:   2000,
+	}
+
+	ctx := context.Background()
+	resp, err := m.GenerateText(ctx, req)
+	if err != nil {
+		return "", fmt.Errorf("生成测试用例失败: %w", err)
+	}
+
+	if len(resp.Choices) == 0 {
+		return "", fmt.Errorf("AI响应中没有生成内容")
+	}
+
+	return resp.Choices[0].Message.Content, nil
+}
+
+// AnalyzeCode 分析代码
+func (m *AIClientManager) AnalyzeCode(code, language string) (string, error) {
+	prompt := fmt.Sprintf(`
+请分析以下%s代码：
+
+代码：
+%s
+
+请从以下方面进行分析：
+1. 代码质量和可读性
+2. 潜在的安全问题
+3. 性能优化建议
+4. 代码规范问题
+5. 改进建议
+
+请提供详细的分析报告。
+`, language, code)
+
+	req := &AIRequest{
+		Model: "gpt-3.5-turbo",
+		Messages: []AIMessage{
+			{Role: "system", Content: "你是一个资深的代码审查专家，擅长发现代码中的问题和改进点。"},
+			{Role: "user", Content: prompt},
+		},
+		Temperature: 0.3,
+		MaxTokens:   3000,
+	}
+
+	ctx := context.Background()
+	resp, err := m.GenerateText(ctx, req)
+	if err != nil {
+		return "", fmt.Errorf("代码分析失败: %w", err)
+	}
+
+	if len(resp.Choices) == 0 {
+		return "", fmt.Errorf("AI响应中没有生成内容")
+	}
+
+	return resp.Choices[0].Message.Content, nil
+}
+
+// GenerateContent 生成内容
+func (m *AIClientManager) GenerateContent(contentType, topic, requirements string) (string, error) {
+	prompt := fmt.Sprintf(`
+请生成%s内容：
+
+主题：%s
+要求：%s
+
+请生成高质量的内容，符合要求。
+`, contentType, topic, requirements)
+
+	req := &AIRequest{
+		Model: "gpt-3.5-turbo",
+		Messages: []AIMessage{
+			{Role: "system", Content: "你是一个专业的内容创作专家，擅长各种类型的内容创作。"},
+			{Role: "user", Content: prompt},
+		},
+		Temperature: 0.8,
+		MaxTokens:   2000,
+	}
+
+	ctx := context.Background()
+	resp, err := m.GenerateText(ctx, req)
+	if err != nil {
+		return "", fmt.Errorf("内容生成失败: %w", err)
+	}
+
+	if len(resp.Choices) == 0 {
+		return "", fmt.Errorf("AI响应中没有生成内容")
+	}
+
+	return resp.Choices[0].Message.Content, nil
 }
 
 // 基础HTTP客户端
@@ -415,9 +531,119 @@ func NewTencentClient(cfg *config.Config) *TencentClient {
 }
 
 func (c *TencentClient) GenerateText(ctx context.Context, req *AIRequest) (*AIResponse, error) {
-	// 腾讯混元需要特殊的认证方式
-	return nil, fmt.Errorf("腾讯混元客户端暂未实现")
+	// 腾讯混元API实现 - 使用OpenAI兼容接口
+	apiKey := c.config.TencentSecretKey
+	
+	if apiKey == "" {
+		return nil, fmt.Errorf("腾讯混元API密钥未配置")
+	}
+	
+	// API配置 - 使用OpenAI兼容接口
+	endpoint := "https://api.hunyuan.cloud.tencent.com/v1/chat/completions"
+	
+	// 构建请求体 - OpenAI兼容格式
+	payload := map[string]interface{}{
+		"model": "hunyuan-lite",
+		"messages": req.Messages,
+		"temperature": req.Temperature,
+		"max_tokens": req.MaxTokens,
+		"stream": false,
+	}
+	
+	payloadJSON, err := json.Marshal(payload)
+	if err != nil {
+		return nil, fmt.Errorf("序列化请求体失败: %w", err)
+	}
+	
+	// 创建HTTP请求
+	httpReq, err := http.NewRequestWithContext(ctx, "POST", endpoint, bytes.NewBuffer(payloadJSON))
+	if err != nil {
+		return nil, fmt.Errorf("创建请求失败: %w", err)
+	}
+	
+	// 设置请求头 - OpenAI兼容格式
+	httpReq.Header.Set("Content-Type", "application/json")
+	httpReq.Header.Set("Authorization", fmt.Sprintf("Bearer %s", apiKey))
+	
+	// 发送请求
+	resp, err := c.httpClient.Do(httpReq)
+	if err != nil {
+		return nil, fmt.Errorf("请求失败: %w", err)
+	}
+	defer resp.Body.Close()
+	
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("读取响应失败: %w", err)
+	}
+	
+	if resp.StatusCode != 200 {
+		return nil, fmt.Errorf("API请求失败 (状态码: %d): %s", resp.StatusCode, string(body))
+	}
+	
+	// 解析腾讯混元响应 - OpenAI兼容格式
+	var tencentResp struct {
+		Choices []struct {
+			Message struct {
+				Role    string `json:"role"`
+				Content string `json:"content"`
+			} `json:"message"`
+		} `json:"choices"`
+		Usage struct {
+			PromptTokens     int `json:"prompt_tokens"`
+			CompletionTokens int `json:"completion_tokens"`
+			TotalTokens      int `json:"total_tokens"`
+		} `json:"usage"`
+		Error struct {
+			Message string `json:"message"`
+		} `json:"error"`
+	}
+	
+	if err := json.Unmarshal(body, &tencentResp); err != nil {
+		return nil, fmt.Errorf("解析响应失败: %w", err)
+	}
+	
+	if tencentResp.Error.Message != "" {
+		return nil, fmt.Errorf("API错误: %s", tencentResp.Error.Message)
+	}
+	
+	if len(tencentResp.Choices) == 0 {
+		return nil, fmt.Errorf("API返回空响应")
+	}
+	
+	// 转换为标准响应格式
+	choice := tencentResp.Choices[0]
+	aiResp := &AIResponse{
+		ID:      fmt.Sprintf("tencent-%d", time.Now().Unix()),
+		Object:  "chat.completion",
+		Created: time.Now().Unix(),
+		Model:   "hunyuan-lite",
+		Choices: []struct {
+			Index   int `json:"index"`
+			Message struct {
+				Role    string `json:"role"`
+				Content string `json:"content"`
+			} `json:"message"`
+			FinishReason string `json:"finish_reason"`
+		}{
+			{
+				Index: 0,
+				Message: struct {
+					Role    string `json:"role"`
+					Content string `json:"content"`
+				}{
+					Role:    choice.Message.Role,
+					Content: choice.Message.Content,
+				},
+				FinishReason: "stop",
+			},
+		},
+		Usage: tencentResp.Usage,
+	}
+	
+	return aiResp, nil
 }
+
 
 func (c *TencentClient) GetServiceType() AIServiceType {
 	return AIServiceTencent

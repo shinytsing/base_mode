@@ -2,6 +2,7 @@ package api
 
 import (
 	"net/http"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"qa-toolbox-backend/internal/models"
@@ -18,40 +19,27 @@ func NewCreativeStudioHandler(creativeStudioService *services.CreativeStudioServ
 	}
 }
 
-// GenerateContent AI写作
+// GenerateContent 生成内容
 func (h *CreativeStudioHandler) GenerateContent(c *gin.Context) {
-	userID := c.GetString("user_id")
-	if userID == "" {
-		c.JSON(http.StatusUnauthorized, models.APIResponse{
-			Success: false,
-			Message: "用户未认证",
-		})
-		return
-	}
+	userID, _ := c.Get("user_id")
 
-	var req struct {
-		Type        string                 `json:"type" validate:"required"`
-		Topic       string                 `json:"topic" validate:"required"`
-		Length      int                    `json:"length"`
-		Style       string                 `json:"style"`
-		Keywords    []string               `json:"keywords"`
-		Settings    map[string]interface{} `json:"settings"`
-	}
-
+	var req services.WritingRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, models.APIResponse{
 			Success: false,
-			Message: "请求参数错误",
+			Message: "Invalid request format",
 			Error:   err.Error(),
 		})
 		return
 	}
 
-	content, err := h.creativeStudioService.GenerateContent(userID, req.Type, req.Topic, req.Length, req.Style, req.Keywords, req.Settings)
+	req.UserID = userID.(string)
+
+	response, err := h.creativeStudioService.GenerateContent(&req)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, models.APIResponse{
+		c.JSON(http.StatusInternalServerError, models.APIResponse{
 			Success: false,
-			Message: "AI写作失败",
+			Message: "Failed to generate content",
 			Error:   err.Error(),
 		})
 		return
@@ -59,75 +47,61 @@ func (h *CreativeStudioHandler) GenerateContent(c *gin.Context) {
 
 	c.JSON(http.StatusOK, models.APIResponse{
 		Success: true,
-		Message: "AI写作成功",
-		Data:    content,
+		Message: "Content generated successfully",
+		Data:    response,
 	})
 }
 
 // GetWritingHistory 获取写作历史
 func (h *CreativeStudioHandler) GetWritingHistory(c *gin.Context) {
-	userID := c.GetString("user_id")
-	if userID == "" {
-		c.JSON(http.StatusUnauthorized, models.APIResponse{
-			Success: false,
-			Message: "用户未认证",
-		})
-		return
-	}
+	userID, _ := c.Get("user_id")
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	perPage, _ := strconv.Atoi(c.DefaultQuery("per_page", "10"))
 
-	history, err := h.creativeStudioService.GetWritingHistory(userID)
+	writings, total, err := h.creativeStudioService.GetWritingHistory(userID.(string), page, perPage)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, models.APIResponse{
 			Success: false,
-			Message: "获取写作历史失败",
+			Message: "Failed to get writing history",
 			Error:   err.Error(),
 		})
 		return
 	}
 
-	c.JSON(http.StatusOK, models.APIResponse{
-		Success: true,
-		Message: "获取写作历史成功",
-		Data:    history,
+	totalPages := (total + perPage - 1) / perPage
+
+	c.JSON(http.StatusOK, models.PaginatedResponse{
+		Data: writings,
+		Pagination: models.Pagination{
+			Page:       page,
+			PerPage:    perPage,
+			Total:      total,
+			TotalPages: totalPages,
+		},
 	})
 }
 
 // GenerateAvatar 生成头像
 func (h *CreativeStudioHandler) GenerateAvatar(c *gin.Context) {
-	userID := c.GetString("user_id")
-	if userID == "" {
-		c.JSON(http.StatusUnauthorized, models.APIResponse{
-			Success: false,
-			Message: "用户未认证",
-		})
-		return
-	}
+	userID, _ := c.Get("user_id")
 
-	var req struct {
-		Style       string                 `json:"style" validate:"required"`
-		Gender      string                 `json:"gender"`
-		Age         string                 `json:"age"`
-		HairColor   string                 `json:"hair_color"`
-		EyeColor    string                 `json:"eye_color"`
-		Clothing    string                 `json:"clothing"`
-		Background  string                 `json:"background"`
-		Settings    map[string]interface{} `json:"settings"`
-	}
-
+	var req services.AvatarRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, models.APIResponse{
 			Success: false,
-			Message: "请求参数错误",
+			Message: "Invalid request format",
 			Error:   err.Error(),
 		})
 		return
 	}
 
-	avatar, err := h.creativeStudioService.GenerateAvatar(userID, req.Style, req.Gender, req.Age, req.HairColor, req.EyeColor, req.Clothing, req.Background, req.Settings)
+	req.UserID = userID.(string)
+
+	response, err := h.creativeStudioService.GenerateAvatar(&req)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, models.APIResponse{
+		c.JSON(http.StatusInternalServerError, models.APIResponse{
 			Success: false,
-			Message: "生成头像失败",
+			Message: "Failed to generate avatar",
 			Error:   err.Error(),
 		})
 		return
@@ -135,102 +109,61 @@ func (h *CreativeStudioHandler) GenerateAvatar(c *gin.Context) {
 
 	c.JSON(http.StatusOK, models.APIResponse{
 		Success: true,
-		Message: "生成头像成功",
-		Data:    avatar,
+		Message: "Avatar generated successfully",
+		Data:    response,
 	})
 }
 
 // GetAvatars 获取头像列表
 func (h *CreativeStudioHandler) GetAvatars(c *gin.Context) {
-	userID := c.GetString("user_id")
-	if userID == "" {
-		c.JSON(http.StatusUnauthorized, models.APIResponse{
-			Success: false,
-			Message: "用户未认证",
-		})
-		return
-	}
+	userID, _ := c.Get("user_id")
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	perPage, _ := strconv.Atoi(c.DefaultQuery("per_page", "10"))
 
-	avatars, err := h.creativeStudioService.GetAvatars(userID)
+	avatars, total, err := h.creativeStudioService.GetAvatars(userID.(string), page, perPage)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, models.APIResponse{
 			Success: false,
-			Message: "获取头像列表失败",
+			Message: "Failed to get avatars",
 			Error:   err.Error(),
 		})
 		return
 	}
 
-	c.JSON(http.StatusOK, models.APIResponse{
-		Success: true,
-		Message: "获取头像列表成功",
-		Data:    avatars,
+	totalPages := (total + perPage - 1) / perPage
+
+	c.JSON(http.StatusOK, models.PaginatedResponse{
+		Data: avatars,
+		Pagination: models.Pagination{
+			Page:       page,
+			PerPage:    perPage,
+			Total:      total,
+			TotalPages: totalPages,
+		},
 	})
 }
 
-// ComposeMusic 音乐创作
+// ComposeMusic 创作音乐
 func (h *CreativeStudioHandler) ComposeMusic(c *gin.Context) {
-	userID := c.GetString("user_id")
-	if userID == "" {
-		c.JSON(http.StatusUnauthorized, models.APIResponse{
-			Success: false,
-			Message: "用户未认证",
-		})
-		return
-	}
+	userID, _ := c.Get("user_id")
 
-	var req struct {
-		Genre       string                 `json:"genre" validate:"required"`
-		Mood        string                 `json:"mood"`
-		Duration    int                    `json:"duration"`
-		Instruments []string               `json:"instruments"`
-		Tempo       int                    `json:"tempo"`
-		Key         string                 `json:"key"`
-		Settings    map[string]interface{} `json:"settings"`
-	}
-
+	var req services.MusicCompositionRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, models.APIResponse{
 			Success: false,
-			Message: "请求参数错误",
+			Message: "Invalid request format",
 			Error:   err.Error(),
 		})
 		return
 	}
 
-	music, err := h.creativeStudioService.ComposeMusic(userID, req.Genre, req.Mood, req.Duration, req.Instruments, req.Tempo, req.Key, req.Settings)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, models.APIResponse{
-			Success: false,
-			Message: "音乐创作失败",
-			Error:   err.Error(),
-		})
-		return
-	}
+	req.UserID = userID.(string)
 
-	c.JSON(http.StatusOK, models.APIResponse{
-		Success: true,
-		Message: "音乐创作成功",
-		Data:    music,
-	})
-}
-
-// GetMusicCompositions 获取音乐作品
-func (h *CreativeStudioHandler) GetMusicCompositions(c *gin.Context) {
-	userID := c.GetString("user_id")
-	if userID == "" {
-		c.JSON(http.StatusUnauthorized, models.APIResponse{
-			Success: false,
-			Message: "用户未认证",
-		})
-		return
-	}
-
-	compositions, err := h.creativeStudioService.GetMusicCompositions(userID)
+	response, err := h.creativeStudioService.ComposeMusic(&req)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, models.APIResponse{
 			Success: false,
-			Message: "获取音乐作品失败",
+			Message: "Failed to compose music",
 			Error:   err.Error(),
 		})
 		return
@@ -238,74 +171,61 @@ func (h *CreativeStudioHandler) GetMusicCompositions(c *gin.Context) {
 
 	c.JSON(http.StatusOK, models.APIResponse{
 		Success: true,
-		Message: "获取音乐作品成功",
-		Data:    compositions,
+		Message: "Music composed successfully",
+		Data:    response,
+	})
+}
+
+// GetMusicCompositions 获取音乐创作列表
+func (h *CreativeStudioHandler) GetMusicCompositions(c *gin.Context) {
+	userID, _ := c.Get("user_id")
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	perPage, _ := strconv.Atoi(c.DefaultQuery("per_page", "10"))
+
+	compositions, total, err := h.creativeStudioService.GetMusicCompositions(userID.(string), page, perPage)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, models.APIResponse{
+			Success: false,
+			Message: "Failed to get music compositions",
+			Error:   err.Error(),
+		})
+		return
+	}
+
+	totalPages := (total + perPage - 1) / perPage
+
+	c.JSON(http.StatusOK, models.PaginatedResponse{
+		Data: compositions,
+		Pagination: models.Pagination{
+			Page:       page,
+			PerPage:    perPage,
+			Total:      total,
+			TotalPages: totalPages,
+		},
 	})
 }
 
 // CreateDesign 创建设计
 func (h *CreativeStudioHandler) CreateDesign(c *gin.Context) {
-	userID := c.GetString("user_id")
-	if userID == "" {
-		c.JSON(http.StatusUnauthorized, models.APIResponse{
-			Success: false,
-			Message: "用户未认证",
-		})
-		return
-	}
+	userID, _ := c.Get("user_id")
 
-	var req struct {
-		Type        string                 `json:"type" validate:"required"`
-		Title       string                 `json:"title" validate:"required"`
-		Description string                 `json:"description"`
-		Dimensions  map[string]interface{} `json:"dimensions"`
-		Colors      []string               `json:"colors"`
-		Elements    []map[string]interface{} `json:"elements"`
-		Settings    map[string]interface{} `json:"settings"`
-	}
-
+	var req services.DesignRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, models.APIResponse{
 			Success: false,
-			Message: "请求参数错误",
+			Message: "Invalid request format",
 			Error:   err.Error(),
 		})
 		return
 	}
 
-	design, err := h.creativeStudioService.CreateDesign(userID, req.Type, req.Title, req.Description, req.Dimensions, req.Colors, req.Elements, req.Settings)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, models.APIResponse{
-			Success: false,
-			Message: "创建设计失败",
-			Error:   err.Error(),
-		})
-		return
-	}
+	req.UserID = userID.(string)
 
-	c.JSON(http.StatusOK, models.APIResponse{
-		Success: true,
-		Message: "创建设计成功",
-		Data:    design,
-	})
-}
-
-// GetDesigns 获取设计作品
-func (h *CreativeStudioHandler) GetDesigns(c *gin.Context) {
-	userID := c.GetString("user_id")
-	if userID == "" {
-		c.JSON(http.StatusUnauthorized, models.APIResponse{
-			Success: false,
-			Message: "用户未认证",
-		})
-		return
-	}
-
-	designs, err := h.creativeStudioService.GetDesigns(userID)
+	response, err := h.creativeStudioService.CreateDesign(&req)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, models.APIResponse{
 			Success: false,
-			Message: "获取设计作品失败",
+			Message: "Failed to create design",
 			Error:   err.Error(),
 		})
 		return
@@ -313,7 +233,36 @@ func (h *CreativeStudioHandler) GetDesigns(c *gin.Context) {
 
 	c.JSON(http.StatusOK, models.APIResponse{
 		Success: true,
-		Message: "获取设计作品成功",
-		Data:    designs,
+		Message: "Design created successfully",
+		Data:    response,
+	})
+}
+
+// GetDesigns 获取设计列表
+func (h *CreativeStudioHandler) GetDesigns(c *gin.Context) {
+	userID, _ := c.Get("user_id")
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	perPage, _ := strconv.Atoi(c.DefaultQuery("per_page", "10"))
+
+	designs, total, err := h.creativeStudioService.GetDesigns(userID.(string), page, perPage)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, models.APIResponse{
+			Success: false,
+			Message: "Failed to get designs",
+			Error:   err.Error(),
+		})
+		return
+	}
+
+	totalPages := (total + perPage - 1) / perPage
+
+	c.JSON(http.StatusOK, models.PaginatedResponse{
+		Data: designs,
+		Pagination: models.Pagination{
+			Page:       page,
+			PerPage:    perPage,
+			Total:      total,
+			TotalPages: totalPages,
+		},
 	})
 }

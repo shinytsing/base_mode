@@ -24,7 +24,7 @@ func (h *AuthHandler) Register(c *gin.Context) {
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, models.APIResponse{
 			Success: false,
-			Message: "请求参数错误",
+			Message: "Invalid request format",
 			Error:   err.Error(),
 		})
 		return
@@ -34,7 +34,7 @@ func (h *AuthHandler) Register(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusBadRequest, models.APIResponse{
 			Success: false,
-			Message: "注册失败",
+			Message: "Registration failed",
 			Error:   err.Error(),
 		})
 		return
@@ -42,7 +42,7 @@ func (h *AuthHandler) Register(c *gin.Context) {
 
 	c.JSON(http.StatusCreated, models.APIResponse{
 		Success: true,
-		Message: "注册成功",
+		Message: "User registered successfully",
 		Data:    user,
 	})
 }
@@ -53,20 +53,17 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, models.APIResponse{
 			Success: false,
-			Message: "请求参数错误",
+			Message: "Invalid request format",
 			Error:   err.Error(),
 		})
 		return
 	}
 
-	// 从配置中获取JWT密钥
-	jwtSecret := "your-jwt-secret-key" // 应该从环境变量获取
-
-	user, token, err := h.authService.Login(&req, jwtSecret)
+	user, token, err := h.authService.Login(&req)
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, models.APIResponse{
 			Success: false,
-			Message: "登录失败",
+			Message: "Login failed",
 			Error:   err.Error(),
 		})
 		return
@@ -74,12 +71,32 @@ func (h *AuthHandler) Login(c *gin.Context) {
 
 	c.JSON(http.StatusOK, models.APIResponse{
 		Success: true,
-		Message: "登录成功",
+		Message: "Login successful",
 		Data: gin.H{
-			"user":         user,
-			"access_token": token,
-			"expires_in":   24 * 3600, // 24小时
+			"user":  user,
+			"token": token,
 		},
+	})
+}
+
+// Logout 用户登出
+func (h *AuthHandler) Logout(c *gin.Context) {
+	userID, _ := c.Get("user_id")
+	token := c.GetHeader("Authorization")
+
+	err := h.authService.Logout(userID.(string), token)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, models.APIResponse{
+			Success: false,
+			Message: "Logout failed",
+			Error:   err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, models.APIResponse{
+		Success: true,
+		Message: "Logout successful",
 	})
 }
 
@@ -92,28 +109,27 @@ func (h *AuthHandler) ForgotPassword(c *gin.Context) {
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, models.APIResponse{
 			Success: false,
-			Message: "请求参数错误",
+			Message: "Invalid request format",
 			Error:   err.Error(),
 		})
 		return
 	}
 
-	token, err := h.authService.GenerateResetToken(req.Email)
+	resetToken, err := h.authService.ForgotPassword(req.Email)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, models.APIResponse{
 			Success: false,
-			Message: "生成重置令牌失败",
+			Message: "Failed to process forgot password request",
 			Error:   err.Error(),
 		})
 		return
 	}
 
-	// 这里应该发送邮件，暂时返回令牌用于测试
 	c.JSON(http.StatusOK, models.APIResponse{
 		Success: true,
-		Message: "重置令牌已生成，请检查邮箱",
+		Message: "Password reset token generated",
 		Data: gin.H{
-			"reset_token": token, // 生产环境中不应该返回令牌
+			"reset_token": resetToken,
 		},
 	})
 }
@@ -121,24 +137,24 @@ func (h *AuthHandler) ForgotPassword(c *gin.Context) {
 // ResetPassword 重置密码
 func (h *AuthHandler) ResetPassword(c *gin.Context) {
 	var req struct {
-		Token       string `json:"token" validate:"required"`
-		NewPassword string `json:"new_password" validate:"required,min=6"`
+		ResetToken   string `json:"reset_token" validate:"required"`
+		NewPassword  string `json:"new_password" validate:"required,min=6"`
 	}
 
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, models.APIResponse{
 			Success: false,
-			Message: "请求参数错误",
+			Message: "Invalid request format",
 			Error:   err.Error(),
 		})
 		return
 	}
 
-	err := h.authService.ResetPassword(req.Token, req.NewPassword)
+	err := h.authService.ResetPassword(req.ResetToken, req.NewPassword)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, models.APIResponse{
 			Success: false,
-			Message: "重置密码失败",
+			Message: "Failed to reset password",
 			Error:   err.Error(),
 		})
 		return
@@ -146,6 +162,6 @@ func (h *AuthHandler) ResetPassword(c *gin.Context) {
 
 	c.JSON(http.StatusOK, models.APIResponse{
 		Success: true,
-		Message: "密码重置成功",
+		Message: "Password reset successfully",
 	})
 }

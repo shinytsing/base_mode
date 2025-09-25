@@ -1,0 +1,42 @@
+name: fitmatrix
+description: FitMatrix - 智能健身管理和运动追踪平台
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+  flutter: ">=3.10.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  
+  # UI组件
+  cupertino_icons: ^1.0.6
+  flutter_screenutil: ^5.9.0
+  
+  # 本地存储
+  shared_preferences: ^2.2.2
+  
+  # 图表
+  fl_chart: ^0.66.0
+  
+  # 时间处理
+  intl: ^0.19.0
+  
+  # 工具库
+  logger: ^2.0.2+1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  
+  # 测试
+  flutter_lints: ^3.0.1
+
+flutter:
+  uses-material-design: true
+  
+  assets:
+    - assets/images/
+    - assets/icons/
+    - assets/fonts/

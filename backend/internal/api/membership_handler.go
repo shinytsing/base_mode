@@ -18,13 +18,13 @@ func NewMembershipHandler(membershipService *services.MembershipService) *Member
 	}
 }
 
-// GetPlans 获取会员计划
+// GetPlans 获取会员计划列表
 func (h *MembershipHandler) GetPlans(c *gin.Context) {
 	plans, err := h.membershipService.GetPlans()
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, models.APIResponse{
 			Success: false,
-			Message: "获取会员计划失败",
+			Message: "Failed to get membership plans",
 			Error:   err.Error(),
 		})
 		return
@@ -32,21 +32,14 @@ func (h *MembershipHandler) GetPlans(c *gin.Context) {
 
 	c.JSON(http.StatusOK, models.APIResponse{
 		Success: true,
-		Message: "获取会员计划成功",
+		Message: "Membership plans retrieved successfully",
 		Data:    plans,
 	})
 }
 
-// Subscribe 订阅会员
+// Subscribe 订阅会员计划
 func (h *MembershipHandler) Subscribe(c *gin.Context) {
-	userID := c.GetString("user_id")
-	if userID == "" {
-		c.JSON(http.StatusUnauthorized, models.APIResponse{
-			Success: false,
-			Message: "用户未认证",
-		})
-		return
-	}
+	userID, _ := c.Get("user_id")
 
 	var req struct {
 		PlanID string `json:"plan_id" validate:"required"`
@@ -55,17 +48,17 @@ func (h *MembershipHandler) Subscribe(c *gin.Context) {
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, models.APIResponse{
 			Success: false,
-			Message: "请求参数错误",
+			Message: "Invalid request format",
 			Error:   err.Error(),
 		})
 		return
 	}
 
-	subscription, err := h.membershipService.Subscribe(userID, req.PlanID)
+	subscription, err := h.membershipService.Subscribe(userID.(string), req.PlanID)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, models.APIResponse{
 			Success: false,
-			Message: "订阅失败",
+			Message: "Failed to subscribe to plan",
 			Error:   err.Error(),
 		})
 		return
@@ -73,27 +66,20 @@ func (h *MembershipHandler) Subscribe(c *gin.Context) {
 
 	c.JSON(http.StatusOK, models.APIResponse{
 		Success: true,
-		Message: "订阅成功",
+		Message: "Subscription created successfully",
 		Data:    subscription,
 	})
 }
 
-// GetStatus 获取会员状态
+// GetStatus 获取订阅状态
 func (h *MembershipHandler) GetStatus(c *gin.Context) {
-	userID := c.GetString("user_id")
-	if userID == "" {
-		c.JSON(http.StatusUnauthorized, models.APIResponse{
-			Success: false,
-			Message: "用户未认证",
-		})
-		return
-	}
+	userID, _ := c.Get("user_id")
 
-	status, err := h.membershipService.GetStatus(userID)
+	subscription, err := h.membershipService.GetStatus(userID.(string))
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, models.APIResponse{
+		c.JSON(http.StatusNotFound, models.APIResponse{
 			Success: false,
-			Message: "获取会员状态失败",
+			Message: "No active subscription found",
 			Error:   err.Error(),
 		})
 		return
@@ -101,27 +87,20 @@ func (h *MembershipHandler) GetStatus(c *gin.Context) {
 
 	c.JSON(http.StatusOK, models.APIResponse{
 		Success: true,
-		Message: "获取会员状态成功",
-		Data:    status,
+		Message: "Subscription status retrieved successfully",
+		Data:    subscription,
 	})
 }
 
 // CancelSubscription 取消订阅
 func (h *MembershipHandler) CancelSubscription(c *gin.Context) {
-	userID := c.GetString("user_id")
-	if userID == "" {
-		c.JSON(http.StatusUnauthorized, models.APIResponse{
-			Success: false,
-			Message: "用户未认证",
-		})
-		return
-	}
+	userID, _ := c.Get("user_id")
 
-	err := h.membershipService.CancelSubscription(userID)
+	err := h.membershipService.CancelSubscription(userID.(string))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, models.APIResponse{
 			Success: false,
-			Message: "取消订阅失败",
+			Message: "Failed to cancel subscription",
 			Error:   err.Error(),
 		})
 		return
@@ -129,6 +108,6 @@ func (h *MembershipHandler) CancelSubscription(c *gin.Context) {
 
 	c.JSON(http.StatusOK, models.APIResponse{
 		Success: true,
-		Message: "取消订阅成功",
+		Message: "Subscription cancelled successfully",
 	})
 }

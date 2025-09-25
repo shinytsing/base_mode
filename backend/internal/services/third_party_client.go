@@ -40,14 +40,10 @@ type AmapGeocodeResponse struct {
 		FormattedAddress string `json:"formatted_address"`
 		Province         string `json:"province"`
 		City             string `json:"city"`
-		District         string `json:"district"`
-		Township         string `json:"township"`
-		Neighborhood     struct {
-			Name string `json:"name"`
-		} `json:"neighborhood"`
-		Building struct {
-			Name string `json:"name"`
-		} `json:"building"`
+		District         interface{} `json:"district"`
+		Township         interface{} `json:"township"`
+		Neighborhood     interface{} `json:"neighborhood"`
+		Building         interface{} `json:"building"`
 		Adcode string `json:"adcode"`
 		Location string `json:"location"`
 		Level   string `json:"level"`
@@ -457,4 +453,134 @@ func (m *ThirdPartyClientManager) sendPostRequest(ctx context.Context, url strin
 	}
 	
 	return body, nil
+}
+
+
+// GetLocationInfo 获取位置信息
+func (m *ThirdPartyClientManager) GetLocationInfo(address string) (*AmapGeocodeResponse, error) {
+	if m.config.AmapAPIKey == "" {
+		return nil, fmt.Errorf("高德地图API密钥未配置")
+	}
+	
+	// 构建请求URL
+	baseURL := "https://restapi.amap.com/v3/geocode/geo"
+	params := url.Values{}
+	params.Set("key", m.config.AmapAPIKey)
+	params.Set("address", address)
+	params.Set("output", "json")
+	
+	reqURL := fmt.Sprintf("%s?%s", baseURL, params.Encode())
+	
+	// 发送请求
+	resp, err := m.httpClient.Get(reqURL)
+	if err != nil {
+		return nil, fmt.Errorf("请求失败: %w", err)
+	}
+	defer resp.Body.Close()
+	
+	// 解析响应
+	var result AmapGeocodeResponse
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return nil, fmt.Errorf("解析响应失败: %w", err)
+	}
+	
+	return &result, nil
+}
+
+// SearchImages 搜索图片
+func (m *ThirdPartyClientManager) SearchImages(query string, perPage int) (*PixabayImageResponse, error) {
+	if m.config.PixabayAPIKey == "" {
+		return nil, fmt.Errorf("Pixabay API密钥未配置")
+	}
+	
+	// 构建请求URL
+	baseURL := "https://pixabay.com/api/"
+	params := url.Values{}
+	params.Set("key", m.config.PixabayAPIKey)
+	params.Set("q", query)
+	params.Set("per_page", strconv.Itoa(perPage))
+	params.Set("image_type", "photo")
+	params.Set("safesearch", "true")
+	
+	reqURL := fmt.Sprintf("%s?%s", baseURL, params.Encode())
+	
+	// 发送请求
+	resp, err := m.httpClient.Get(reqURL)
+	if err != nil {
+		return nil, fmt.Errorf("请求失败: %w", err)
+	}
+	defer resp.Body.Close()
+	
+	// 解析响应
+	var result PixabayImageResponse
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return nil, fmt.Errorf("解析响应失败: %w", err)
+	}
+	
+	return &result, nil
+}
+
+// GetWeather 获取天气信息
+func (m *ThirdPartyClientManager) GetWeather(city string) (*OpenWeatherResponse, error) {
+	if m.config.OpenWeatherAPIKey == "" {
+		return nil, fmt.Errorf("OpenWeather API密钥未配置")
+	}
+	
+	// 构建请求URL
+	baseURL := "https://api.openweathermap.org/data/2.5/weather"
+	params := url.Values{}
+	params.Set("q", city)
+	params.Set("appid", m.config.OpenWeatherAPIKey)
+	params.Set("units", "metric")
+	params.Set("lang", "zh_cn")
+	
+	reqURL := fmt.Sprintf("%s?%s", baseURL, params.Encode())
+	
+	// 发送请求
+	resp, err := m.httpClient.Get(reqURL)
+	if err != nil {
+		return nil, fmt.Errorf("请求失败: %w", err)
+	}
+	defer resp.Body.Close()
+	
+	// 解析响应
+	var result OpenWeatherResponse
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return nil, fmt.Errorf("解析响应失败: %w", err)
+	}
+	
+	return &result, nil
+}
+
+// SearchWeb 网络搜索
+func (m *ThirdPartyClientManager) SearchWeb(query string, num int) (*GoogleSearchResponse, error) {
+	if m.config.GoogleAPIKey == "" || m.config.GoogleCSEID == "" {
+		return nil, fmt.Errorf("Google搜索API密钥未配置")
+	}
+	
+	// 构建请求URL
+	baseURL := "https://www.googleapis.com/customsearch/v1"
+	params := url.Values{}
+	params.Set("key", m.config.GoogleAPIKey)
+	params.Set("cx", m.config.GoogleCSEID)
+	params.Set("q", query)
+	params.Set("num", strconv.Itoa(num))
+	params.Set("safe", "active")
+	
+	reqURL := fmt.Sprintf("%s?%s", baseURL, params.Encode())
+	
+	// 发送请求
+	resp, err := m.httpClient.Get(reqURL)
+	if err != nil {
+		return nil, fmt.Errorf("请求失败: %w", err)
+	}
+	defer resp.Body.Close()
+	
+	// 解析响应
+	var result GoogleSearchResponse
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return nil, fmt.Errorf("解析响应失败: %w", err)
+	}
+	
+	return &result, nil
 }

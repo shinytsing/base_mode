@@ -5,7 +5,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>健身助手</string>
+	<string>FitMatrix</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -13,7 +13,7 @@
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
-	<string>fit_tracker</string>
+	<string>fitmatrix</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
@@ -45,5 +45,31 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	
+	<!-- 传感器权限 -->
+	<key>NSMotionUsageDescription</key>
+	<string>FitMatrix需要访问运动传感器来追踪您的步数和活动</string>
+	<key>NSHealthShareUsageDescription</key>
+	<string>FitMatrix需要访问健康数据来提供更准确的健身分析</string>
+	<key>NSHealthUpdateUsageDescription</key>
+	<string>FitMatrix需要更新健康数据来记录您的健身活动</string>
+	
+	<!-- 位置权限 -->
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>FitMatrix需要访问位置信息来追踪您的运动路线</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>FitMatrix需要访问位置信息来追踪您的运动路线</string>
+	
+	<!-- 通知权限 -->
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>background-fetch</string>
+		<string>background-processing</string>
+		<string>remote-notification</string>
+	</array>
+	
+	<!-- Firebase配置 -->
+	<key>FirebaseAppDelegateProxyEnabled</key>
+	<false/>
 </dict>
 </plist>

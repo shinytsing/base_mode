@@ -1,5 +1,5 @@
-name: fit_tracker
-description: FitTracker - 健康管理和运动追踪
+name: fitmatrix
+description: FitMatrix - 智能健身管理和运动追踪平台
 version: 1.0.0+1
 
 environment:
@@ -40,6 +40,20 @@ dependencies:
   # 权限
   permission_handler: ^11.1.0
   
+  # 传感器和健康数据
+  health: ^10.0.0
+  sensors_plus: ^4.0.2
+  device_info_plus: ^9.1.1
+  pedometer: ^4.1.1
+  
+  # 推送通知
+  firebase_core: ^2.24.2
+  firebase_messaging: ^14.7.10
+  flutter_local_notifications: ^14.0.0
+  
+  # 后台任务
+  workmanager: ^0.5.0
+  
   # 图片处理
   image_picker: ^1.0.4
   
@@ -51,6 +65,9 @@ dependencies:
   
   # 图表
   fl_chart: ^0.66.0
+  
+  # 时间处理
+  intl: ^0.19.0
 
 dev_dependencies:
   flutter_test:

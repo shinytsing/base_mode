@@ -20,8 +20,8 @@ import (
 
 func main() {
 	// 加载环境变量
-	if err := godotenv.Load(); err != nil {
-		log.Println("No .env file found")
+	if err := godotenv.Load("env.local"); err != nil {
+		log.Println("No env.local file found")
 	}
 
 	// 初始化配置

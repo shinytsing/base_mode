@@ -24,7 +24,7 @@ func NewQAToolBoxService(db *database.DB) *QAToolBoxService {
 }
 
 // GenerateTestCases 生成测试用例
-func (s *QAToolBoxService) GenerateTestCases(req *models.TestGenerationRequest) (*models.TestGenerationResponse, error) {
+func (s *QAToolBoxService) GenerateTestCases(userID string, req *models.TestGenerationRequest) (*models.TestGenerationResponse, error) {
 	generationID := uuid.New().String()
 	
 	// 分析代码并生成测试用例
@@ -38,12 +38,24 @@ func (s *QAToolBoxService) GenerateTestCases(req *models.TestGenerationRequest) 
 		testCase.GenerationID = generationID
 		testCase.CreatedAt = time.Now()
 		
-		_, err := s.db.Exec(`
-			INSERT INTO test_cases (id, generation_id, name, description, code, type, tags, priority, is_automated, metadata, created_at)
-			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+		// 将tags转换为JSON
+		tagsJSON, err := json.Marshal(testCase.Tags)
+		if err != nil {
+			return nil, fmt.Errorf("转换tags为JSON失败: %w", err)
+		}
+		
+		// 将metadata转换为JSON
+		metadataJSON, err := json.Marshal(testCase.Metadata)
+		if err != nil {
+			return nil, fmt.Errorf("转换metadata为JSON失败: %w", err)
+		}
+		
+		_, err = s.db.Exec(`
+			INSERT INTO test_cases (id, generation_id, name, description, code, type, tags, priority, is_automated, metadata, created_at, user_id)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
 		`, testCase.ID, testCase.GenerationID, testCase.Name, testCase.Description, 
-			testCase.Code, testCase.Type, testCase.Tags, testCase.Priority, 
-			testCase.IsAutomated, testCase.Metadata, testCase.CreatedAt)
+			testCase.Code, testCase.Type, tagsJSON, testCase.Priority, 
+			testCase.IsAutomated, metadataJSON, testCase.CreatedAt, userID)
 		
 		if err != nil {
 			return nil, fmt.Errorf("保存测试用例失败: %w", err)
@@ -588,9 +600,45 @@ func (s *QAToolBoxService) calculateTestMetrics(testCases []models.TestCase, tar
 }
 
 // GetTestCases 获取测试用例
-func (s *QAToolBoxService) GetTestCases(userID string) ([]models.TestCase, error) {
-	// 实现获取测试用例的逻辑
-	return []models.TestCase{}, nil
+func (s *QAToolBoxService) GetTestCases(userID string, page, perPage int) ([]models.TestCase, int, error) {
+	// 计算偏移量
+	offset := (page - 1) * perPage
+	
+	// 查询测试用例
+	rows, err := s.db.Query(`
+		SELECT id, generation_id, name, description, code, type, tags, priority, is_automated, metadata, created_at
+		FROM test_cases 
+		WHERE user_id = $1 
+		ORDER BY created_at DESC 
+		LIMIT $2 OFFSET $3
+	`, userID, perPage, offset)
+	if err != nil {
+		return nil, 0, fmt.Errorf("查询测试用例失败: %w", err)
+	}
+	defer rows.Close()
+	
+	var testCases []models.TestCase
+	for rows.Next() {
+		var testCase models.TestCase
+		err := rows.Scan(
+			&testCase.ID, &testCase.GenerationID, &testCase.Name, &testCase.Description,
+			&testCase.Code, &testCase.Type, &testCase.Tags, &testCase.Priority,
+			&testCase.IsAutomated, &testCase.Metadata, &testCase.CreatedAt,
+		)
+		if err != nil {
+			return nil, 0, fmt.Errorf("扫描测试用例失败: %w", err)
+		}
+		testCases = append(testCases, testCase)
+	}
+	
+	// 查询总数
+	var total int
+	err = s.db.QueryRow("SELECT COUNT(*) FROM test_cases WHERE user_id = $1", userID).Scan(&total)
+	if err != nil {
+		return nil, 0, fmt.Errorf("查询总数失败: %w", err)
+	}
+	
+	return testCases, total, nil
 }
 
 // ConvertPDF PDF转换
@@ -668,9 +716,45 @@ func (s *QAToolBoxService) performPDFConversion(sourceURL, sourceFormat, targetF
 }
 
 // GetPDFConversions 获取PDF转换历史
-func (s *QAToolBoxService) GetPDFConversions(userID string) ([]models.PDFConversionResponse, error) {
-	// 实现获取PDF转换历史的逻辑
-	return []models.PDFConversionResponse{}, nil
+func (s *QAToolBoxService) GetPDFConversions(userID string, page, perPage int) ([]models.PDFConversionResponse, int, error) {
+	// 计算偏移量
+	offset := (page - 1) * perPage
+	
+	// 查询PDF转换历史
+	rows, err := s.db.Query(`
+		SELECT id, user_id, source_file_url, source_format, target_format, status, created_at, updated_at
+		FROM pdf_conversions 
+		WHERE user_id = $1 
+		ORDER BY created_at DESC 
+		LIMIT $2 OFFSET $3
+	`, userID, perPage, offset)
+	if err != nil {
+		return nil, 0, fmt.Errorf("查询PDF转换历史失败: %w", err)
+	}
+	defer rows.Close()
+	
+	var conversions []models.PDFConversionResponse
+	for rows.Next() {
+		var conversion models.PDFConversionResponse
+		err := rows.Scan(
+			&conversion.ID, &conversion.UserID, &conversion.SourceFileURL, 
+			&conversion.SourceFormat, &conversion.TargetFormat, &conversion.Status,
+			&conversion.CreatedAt, &conversion.UpdatedAt,
+		)
+		if err != nil {
+			return nil, 0, fmt.Errorf("扫描PDF转换记录失败: %w", err)
+		}
+		conversions = append(conversions, conversion)
+	}
+	
+	// 查询总数
+	var total int
+	err = s.db.QueryRow("SELECT COUNT(*) FROM pdf_conversions WHERE user_id = $1", userID).Scan(&total)
+	if err != nil {
+		return nil, 0, fmt.Errorf("查询总数失败: %w", err)
+	}
+	
+	return conversions, total, nil
 }
 
 // CreateCrawlerTask 创建爬虫任务
@@ -870,9 +954,44 @@ func (s *QAToolBoxService) convertHeadersToMap(headers http.Header) map[string]i
 }
 
 // GetCrawlerTasks 获取爬虫任务
-func (s *QAToolBoxService) GetCrawlerTasks(userID string) ([]models.CrawlerTask, error) {
-	// 实现获取爬虫任务的逻辑
-	return []models.CrawlerTask{}, nil
+func (s *QAToolBoxService) GetCrawlerTasks(userID string, page, perPage int) ([]models.CrawlerTask, int, error) {
+	// 计算偏移量
+	offset := (page - 1) * perPage
+	
+	// 查询爬虫任务
+	rows, err := s.db.Query(`
+		SELECT id, user_id, name, url, status, created_at, updated_at
+		FROM crawler_tasks 
+		WHERE user_id = $1 
+		ORDER BY created_at DESC 
+		LIMIT $2 OFFSET $3
+	`, userID, perPage, offset)
+	if err != nil {
+		return nil, 0, fmt.Errorf("查询爬虫任务失败: %w", err)
+	}
+	defer rows.Close()
+	
+	var tasks []models.CrawlerTask
+	for rows.Next() {
+		var task models.CrawlerTask
+		err := rows.Scan(
+			&task.ID, &task.UserID, &task.Name, &task.URL, 
+			&task.Status, &task.CreatedAt, &task.UpdatedAt,
+		)
+		if err != nil {
+			return nil, 0, fmt.Errorf("扫描爬虫任务失败: %w", err)
+		}
+		tasks = append(tasks, task)
+	}
+	
+	// 查询总数
+	var total int
+	err = s.db.QueryRow("SELECT COUNT(*) FROM crawler_tasks WHERE user_id = $1", userID).Scan(&total)
+	if err != nil {
+		return nil, 0, fmt.Errorf("查询总数失败: %w", err)
+	}
+	
+	return tasks, total, nil
 }
 
 // RunAPITest 运行API测试
@@ -1054,7 +1173,42 @@ func (s *QAToolBoxService) executeAssertions(testCase *models.APITestCase, statu
 }
 
 // GetAPITests 获取API测试历史
-func (s *QAToolBoxService) GetAPITests(userID string) ([]models.APITestResult, error) {
-	// 实现获取API测试历史的逻辑
-	return []models.APITestResult{}, nil
+func (s *QAToolBoxService) GetAPITests(userID string, page, perPage int) ([]models.APITestResult, int, error) {
+	// 计算偏移量
+	offset := (page - 1) * perPage
+	
+	// 查询API测试结果
+	rows, err := s.db.Query(`
+		SELECT id, test_case_id, status, response_status, response_time, executed_at
+		FROM api_test_results 
+		WHERE test_case_id IN (SELECT id FROM api_test_cases WHERE user_id = $1)
+		ORDER BY executed_at DESC 
+		LIMIT $2 OFFSET $3
+	`, userID, perPage, offset)
+	if err != nil {
+		return nil, 0, fmt.Errorf("查询API测试结果失败: %w", err)
+	}
+	defer rows.Close()
+	
+	var results []models.APITestResult
+	for rows.Next() {
+		var result models.APITestResult
+		err := rows.Scan(
+			&result.ID, &result.TestCaseID, &result.Status, &result.ResponseStatus,
+			&result.ResponseTime, &result.ExecutedAt,
+		)
+		if err != nil {
+			return nil, 0, fmt.Errorf("扫描API测试结果失败: %w", err)
+		}
+		results = append(results, result)
+	}
+	
+	// 查询总数
+	var total int
+	err = s.db.QueryRow("SELECT COUNT(*) FROM api_test_results WHERE user_id = $1", userID).Scan(&total)
+	if err != nil {
+		return nil, 0, fmt.Errorf("查询总数失败: %w", err)
+	}
+	
+	return results, total, nil
 }

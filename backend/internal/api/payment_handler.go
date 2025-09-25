@@ -2,6 +2,7 @@ package api
 
 import (
 	"net/http"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"qa-toolbox-backend/internal/models"
@@ -20,32 +21,25 @@ func NewPaymentHandler(paymentService *services.PaymentService) *PaymentHandler 
 
 // CreatePaymentIntent 创建支付意图
 func (h *PaymentHandler) CreatePaymentIntent(c *gin.Context) {
-	userID := c.GetString("user_id")
-	if userID == "" {
-		c.JSON(http.StatusUnauthorized, models.APIResponse{
-			Success: false,
-			Message: "用户未认证",
-		})
-		return
-	}
+	userID, _ := c.Get("user_id")
 
 	var req models.PaymentRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, models.APIResponse{
 			Success: false,
-			Message: "请求参数错误",
+			Message: "Invalid request format",
 			Error:   err.Error(),
 		})
 		return
 	}
 
-	req.UserID = userID
+	req.UserID = userID.(string)
 
-	payment, err := h.paymentService.CreatePaymentIntent(&req)
+	response, err := h.paymentService.CreatePaymentIntent(&req)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, models.APIResponse{
 			Success: false,
-			Message: "创建支付意图失败",
+			Message: "Failed to create payment intent",
 			Error:   err.Error(),
 		})
 		return
@@ -53,35 +47,64 @@ func (h *PaymentHandler) CreatePaymentIntent(c *gin.Context) {
 
 	c.JSON(http.StatusOK, models.APIResponse{
 		Success: true,
-		Message: "创建支付意图成功",
-		Data:    payment,
+		Message: "Payment intent created successfully",
+		Data:    response,
 	})
 }
 
-// HandleWebhook 处理支付webhook
+// HandleWebhook 处理支付回调
 func (h *PaymentHandler) HandleWebhook(c *gin.Context) {
-	// 这里应该处理Stripe webhook
+	var webhookData map[string]interface{}
+	if err := c.ShouldBindJSON(&webhookData); err != nil {
+		c.JSON(http.StatusBadRequest, models.APIResponse{
+			Success: false,
+			Message: "Invalid webhook data",
+			Error:   err.Error(),
+		})
+		return
+	}
+
+	err := h.paymentService.HandleWebhook(webhookData)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, models.APIResponse{
+			Success: false,
+			Message: "Failed to handle webhook",
+			Error:   err.Error(),
+		})
+		return
+	}
+
 	c.JSON(http.StatusOK, models.APIResponse{
 		Success: true,
-		Message: "Webhook处理成功",
+		Message: "Webhook handled successfully",
 	})
 }
 
 // GetPaymentHistory 获取支付历史
 func (h *PaymentHandler) GetPaymentHistory(c *gin.Context) {
-	userID := c.GetString("user_id")
-	if userID == "" {
-		c.JSON(http.StatusUnauthorized, models.APIResponse{
+	userID, _ := c.Get("user_id")
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	perPage, _ := strconv.Atoi(c.DefaultQuery("per_page", "10"))
+
+	payments, total, err := h.paymentService.GetPaymentHistory(userID.(string), page, perPage)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, models.APIResponse{
 			Success: false,
-			Message: "用户未认证",
+			Message: "Failed to get payment history",
+			Error:   err.Error(),
 		})
 		return
 	}
 
-	// 实现获取支付历史的逻辑
-	c.JSON(http.StatusOK, models.APIResponse{
-		Success: true,
-		Message: "获取支付历史成功",
-		Data:    []interface{}{},
+	totalPages := (total + perPage - 1) / perPage
+
+	c.JSON(http.StatusOK, models.PaginatedResponse{
+		Data: payments,
+		Pagination: models.Pagination{
+			Page:       page,
+			PerPage:    perPage,
+			Total:      total,
+			TotalPages: totalPages,
+		},
 	})
 }

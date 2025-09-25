@@ -2,6 +2,8 @@ package api
 
 import (
 	"net/http"
+	"strconv"
+
 	"github.com/gin-gonic/gin"
 	"qa-toolbox-backend/internal/models"
 	"qa-toolbox-backend/internal/services"
@@ -17,22 +19,33 @@ func NewAppHandler(appService *services.AppService) *AppHandler {
 	}
 }
 
-// GetApps 获取所有应用
+// GetApps 获取应用列表
 func (h *AppHandler) GetApps(c *gin.Context) {
-	apps, err := h.appService.GetApps()
+	// 获取查询参数
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	perPage, _ := strconv.Atoi(c.DefaultQuery("per_page", "10"))
+	category := c.Query("category")
+
+	apps, total, err := h.appService.GetApps(page, perPage, category)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, models.APIResponse{
 			Success: false,
-			Message: "获取应用列表失败",
+			Message: "Failed to get apps",
 			Error:   err.Error(),
 		})
 		return
 	}
 
-	c.JSON(http.StatusOK, models.APIResponse{
-		Success: true,
-		Message: "获取应用列表成功",
-		Data:    apps,
+	totalPages := (total + perPage - 1) / perPage
+
+	c.JSON(http.StatusOK, models.PaginatedResponse{
+		Data: apps,
+		Pagination: models.Pagination{
+			Page:       page,
+			PerPage:    perPage,
+			Total:      total,
+			TotalPages: totalPages,
+		},
 	})
 }
 
@@ -42,7 +55,7 @@ func (h *AppHandler) GetAppByID(c *gin.Context) {
 	if appID == "" {
 		c.JSON(http.StatusBadRequest, models.APIResponse{
 			Success: false,
-			Message: "应用ID不能为空",
+			Message: "App ID is required",
 		})
 		return
 	}
@@ -51,7 +64,7 @@ func (h *AppHandler) GetAppByID(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusNotFound, models.APIResponse{
 			Success: false,
-			Message: "获取应用信息失败",
+			Message: "App not found",
 			Error:   err.Error(),
 		})
 		return
@@ -59,18 +72,18 @@ func (h *AppHandler) GetAppByID(c *gin.Context) {
 
 	c.JSON(http.StatusOK, models.APIResponse{
 		Success: true,
-		Message: "获取应用信息成功",
+		Message: "App retrieved successfully",
 		Data:    app,
 	})
 }
 
 // InstallApp 安装应用
 func (h *AppHandler) InstallApp(c *gin.Context) {
-	userID := c.GetString("user_id")
-	if userID == "" {
+	userID, exists := c.Get("user_id")
+	if !exists {
 		c.JSON(http.StatusUnauthorized, models.APIResponse{
 			Success: false,
-			Message: "用户未认证",
+			Message: "User not authenticated",
 		})
 		return
 	}
@@ -79,16 +92,16 @@ func (h *AppHandler) InstallApp(c *gin.Context) {
 	if appID == "" {
 		c.JSON(http.StatusBadRequest, models.APIResponse{
 			Success: false,
-			Message: "应用ID不能为空",
+			Message: "App ID is required",
 		})
 		return
 	}
 
-	err := h.appService.InstallApp(userID, appID)
+	err := h.appService.InstallApp(userID.(string), appID)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, models.APIResponse{
 			Success: false,
-			Message: "安装应用失败",
+			Message: "Failed to install app",
 			Error:   err.Error(),
 		})
 		return
@@ -96,17 +109,17 @@ func (h *AppHandler) InstallApp(c *gin.Context) {
 
 	c.JSON(http.StatusOK, models.APIResponse{
 		Success: true,
-		Message: "安装应用成功",
+		Message: "App installed successfully",
 	})
 }
 
 // UninstallApp 卸载应用
 func (h *AppHandler) UninstallApp(c *gin.Context) {
-	userID := c.GetString("user_id")
-	if userID == "" {
+	userID, exists := c.Get("user_id")
+	if !exists {
 		c.JSON(http.StatusUnauthorized, models.APIResponse{
 			Success: false,
-			Message: "用户未认证",
+			Message: "User not authenticated",
 		})
 		return
 	}
@@ -115,16 +128,16 @@ func (h *AppHandler) UninstallApp(c *gin.Context) {
 	if appID == "" {
 		c.JSON(http.StatusBadRequest, models.APIResponse{
 			Success: false,
-			Message: "应用ID不能为空",
+			Message: "App ID is required",
 		})
 		return
 	}
 
-	err := h.appService.UninstallApp(userID, appID)
+	err := h.appService.UninstallApp(userID.(string), appID)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, models.APIResponse{
 			Success: false,
-			Message: "卸载应用失败",
+			Message: "Failed to uninstall app",
 			Error:   err.Error(),
 		})
 		return
@@ -132,34 +145,44 @@ func (h *AppHandler) UninstallApp(c *gin.Context) {
 
 	c.JSON(http.StatusOK, models.APIResponse{
 		Success: true,
-		Message: "卸载应用成功",
+		Message: "App uninstalled successfully",
 	})
 }
 
 // GetInstalledApps 获取已安装的应用
 func (h *AppHandler) GetInstalledApps(c *gin.Context) {
-	userID := c.GetString("user_id")
-	if userID == "" {
+	userID, exists := c.Get("user_id")
+	if !exists {
 		c.JSON(http.StatusUnauthorized, models.APIResponse{
 			Success: false,
-			Message: "用户未认证",
+			Message: "User not authenticated",
 		})
 		return
 	}
 
-	apps, err := h.appService.GetInstalledApps(userID)
+	// 获取查询参数
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	perPage, _ := strconv.Atoi(c.DefaultQuery("per_page", "10"))
+
+	apps, total, err := h.appService.GetInstalledApps(userID.(string), page, perPage)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, models.APIResponse{
 			Success: false,
-			Message: "获取已安装应用失败",
+			Message: "Failed to get installed apps",
 			Error:   err.Error(),
 		})
 		return
 	}
 
-	c.JSON(http.StatusOK, models.APIResponse{
-		Success: true,
-		Message: "获取已安装应用成功",
-		Data:    apps,
+	totalPages := (total + perPage - 1) / perPage
+
+	c.JSON(http.StatusOK, models.PaginatedResponse{
+		Data: apps,
+		Pagination: models.Pagination{
+			Page:       page,
+			PerPage:    perPage,
+			Total:      total,
+			TotalPages: totalPages,
+		},
 	})
 }

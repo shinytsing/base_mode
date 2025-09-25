@@ -9,7 +9,6 @@ require (
 	github.com/google/uuid v1.5.0
 	github.com/joho/godotenv v1.4.0
 	github.com/lib/pq v1.10.9
-	github.com/stripe/stripe-go/v75 v75.8.0
 	golang.org/x/crypto v0.17.0
 	golang.org/x/time v0.3.0
 )

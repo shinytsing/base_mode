@@ -8,6 +8,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
+	"golang.org/x/time/rate"
 )
 
 // JWTClaims JWT声明
@@ -163,5 +164,59 @@ func RefreshTokenMiddleware(jwtSecret string) gin.HandlerFunc {
 			"message": "无效的刷新令牌",
 		})
 		c.Abort()
+	}
+}
+
+// Logger 日志中间件
+func Logger() gin.HandlerFunc {
+	return gin.LoggerWithFormatter(func(param gin.LogFormatterParams) string {
+		return fmt.Sprintf("%s - [%s] \"%s %s %s %d %s \"%s\" %s\"\n",
+			param.ClientIP,
+			param.TimeStamp.Format(time.RFC1123),
+			param.Method,
+			param.Path,
+			param.Request.Proto,
+			param.StatusCode,
+			param.Latency,
+			param.Request.UserAgent(),
+			param.ErrorMessage,
+		)
+	})
+}
+
+// Recovery 恢复中间件
+func Recovery() gin.HandlerFunc {
+	return gin.Recovery()
+}
+
+// CORS 跨域中间件
+func CORS() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		c.Header("Access-Control-Allow-Origin", "*")
+		c.Header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+		c.Header("Access-Control-Allow-Headers", "Origin, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization")
+		
+		if c.Request.Method == "OPTIONS" {
+			c.AbortWithStatus(204)
+			return
+		}
+		
+		c.Next()
+	}
+}
+
+// RateLimit 限流中间件
+func RateLimit() gin.HandlerFunc {
+	limiter := rate.NewLimiter(rate.Limit(60), 10) // 每分钟60个请求，突发10个
+	
+	return func(c *gin.Context) {
+		if !limiter.Allow() {
+			c.JSON(http.StatusTooManyRequests, gin.H{
+				"error": "Too many requests",
+			})
+			c.Abort()
+			return
+		}
+		c.Next()
 	}
 }

@@ -20,20 +20,20 @@ func NewUserHandler(authService *services.AuthService) *UserHandler {
 
 // GetProfile 获取用户资料
 func (h *UserHandler) GetProfile(c *gin.Context) {
-	userID := c.GetString("user_id")
-	if userID == "" {
+	userID, exists := c.Get("user_id")
+	if !exists {
 		c.JSON(http.StatusUnauthorized, models.APIResponse{
 			Success: false,
-			Message: "用户未认证",
+			Message: "User not authenticated",
 		})
 		return
 	}
 
-	user, err := h.authService.GetUserByID(userID)
+	user, err := h.authService.GetUserByID(userID.(string))
 	if err != nil {
 		c.JSON(http.StatusNotFound, models.APIResponse{
 			Success: false,
-			Message: "获取用户信息失败",
+			Message: "User not found",
 			Error:   err.Error(),
 		})
 		return
@@ -41,18 +41,18 @@ func (h *UserHandler) GetProfile(c *gin.Context) {
 
 	c.JSON(http.StatusOK, models.APIResponse{
 		Success: true,
-		Message: "获取用户信息成功",
+		Message: "Profile retrieved successfully",
 		Data:    user,
 	})
 }
 
 // UpdateProfile 更新用户资料
 func (h *UserHandler) UpdateProfile(c *gin.Context) {
-	userID := c.GetString("user_id")
-	if userID == "" {
+	userID, exists := c.Get("user_id")
+	if !exists {
 		c.JSON(http.StatusUnauthorized, models.APIResponse{
 			Success: false,
-			Message: "用户未认证",
+			Message: "User not authenticated",
 		})
 		return
 	}
@@ -61,17 +61,24 @@ func (h *UserHandler) UpdateProfile(c *gin.Context) {
 	if err := c.ShouldBindJSON(&updates); err != nil {
 		c.JSON(http.StatusBadRequest, models.APIResponse{
 			Success: false,
-			Message: "请求参数错误",
+			Message: "Invalid request format",
 			Error:   err.Error(),
 		})
 		return
 	}
 
-	user, err := h.authService.UpdateProfile(userID, updates)
+	// 移除不允许更新的字段
+	delete(updates, "id")
+	delete(updates, "email")
+	delete(updates, "password_hash")
+	delete(updates, "created_at")
+	delete(updates, "updated_at")
+
+	user, err := h.authService.UpdateUser(userID.(string), updates)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, models.APIResponse{
 			Success: false,
-			Message: "更新用户资料失败",
+			Message: "Failed to update profile",
 			Error:   err.Error(),
 		})
 		return
@@ -79,18 +86,18 @@ func (h *UserHandler) UpdateProfile(c *gin.Context) {
 
 	c.JSON(http.StatusOK, models.APIResponse{
 		Success: true,
-		Message: "更新用户资料成功",
+		Message: "Profile updated successfully",
 		Data:    user,
 	})
 }
 
 // ChangePassword 修改密码
 func (h *UserHandler) ChangePassword(c *gin.Context) {
-	userID := c.GetString("user_id")
-	if userID == "" {
+	userID, exists := c.Get("user_id")
+	if !exists {
 		c.JSON(http.StatusUnauthorized, models.APIResponse{
 			Success: false,
-			Message: "用户未认证",
+			Message: "User not authenticated",
 		})
 		return
 	}
@@ -103,17 +110,17 @@ func (h *UserHandler) ChangePassword(c *gin.Context) {
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, models.APIResponse{
 			Success: false,
-			Message: "请求参数错误",
+			Message: "Invalid request format",
 			Error:   err.Error(),
 		})
 		return
 	}
 
-	err := h.authService.ChangePassword(userID, req.OldPassword, req.NewPassword)
+	err := h.authService.ChangePassword(userID.(string), req.OldPassword, req.NewPassword)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, models.APIResponse{
 			Success: false,
-			Message: "修改密码失败",
+			Message: "Failed to change password",
 			Error:   err.Error(),
 		})
 		return
@@ -121,30 +128,27 @@ func (h *UserHandler) ChangePassword(c *gin.Context) {
 
 	c.JSON(http.StatusOK, models.APIResponse{
 		Success: true,
-		Message: "修改密码成功",
+		Message: "Password changed successfully",
 	})
 }
 
 // Logout 用户登出
 func (h *UserHandler) Logout(c *gin.Context) {
-	userID := c.GetString("user_id")
-	if userID == "" {
+	userID, exists := c.Get("user_id")
+	if !exists {
 		c.JSON(http.StatusUnauthorized, models.APIResponse{
 			Success: false,
-			Message: "用户未认证",
+			Message: "User not authenticated",
 		})
 		return
 	}
 
-	// 获取令牌
-	authHeader := c.GetHeader("Authorization")
-	token := authHeader[7:] // 移除 "Bearer " 前缀
-
-	err := h.authService.Logout(userID, token)
+	// 从Redis中删除token
+	err := h.authService.RemoveTokenFromRedis(userID.(string), "")
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, models.APIResponse{
 			Success: false,
-			Message: "登出失败",
+			Message: "Failed to logout",
 			Error:   err.Error(),
 		})
 		return
@@ -152,6 +156,6 @@ func (h *UserHandler) Logout(c *gin.Context) {
 
 	c.JSON(http.StatusOK, models.APIResponse{
 		Success: true,
-		Message: "登出成功",
+		Message: "Logout successful",
 	})
 }

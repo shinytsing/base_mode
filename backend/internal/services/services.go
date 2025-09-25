@@ -35,7 +35,7 @@ func NewServices(db *database.DB, redis *database.RedisClient, cfg *config.Confi
 		Config:       cfg,
 		
 		// 核心服务
-		AuthService:       NewAuthService(db, redis),
+		AuthService:       NewAuthService(db, redis, cfg.JWTSecret),
 		AppService:        NewAppService(db),
 		MembershipService: NewMembershipService(db),
 		PaymentService:    NewPaymentService(db, redis),

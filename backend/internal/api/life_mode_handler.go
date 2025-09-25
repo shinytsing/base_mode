@@ -2,6 +2,7 @@ package api
 
 import (
 	"net/http"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"qa-toolbox-backend/internal/models"
@@ -18,37 +19,27 @@ func NewLifeModeHandler(lifeModeService *services.LifeModeService) *LifeModeHand
 	}
 }
 
-// GetFoodRecommendation 获取美食推荐
+// GetFoodRecommendation 获取食物推荐
 func (h *LifeModeHandler) GetFoodRecommendation(c *gin.Context) {
-	userID := c.GetString("user_id")
-	if userID == "" {
-		c.JSON(http.StatusUnauthorized, models.APIResponse{
-			Success: false,
-			Message: "用户未认证",
-		})
-		return
-	}
+	userID, _ := c.Get("user_id")
 
-	var req struct {
-		Preferences map[string]interface{} `json:"preferences"`
-		Location    string                 `json:"location"`
-		Budget      float64                `json:"budget"`
-	}
-
+	var req services.FoodRecommendationRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, models.APIResponse{
 			Success: false,
-			Message: "请求参数错误",
+			Message: "Invalid request format",
 			Error:   err.Error(),
 		})
 		return
 	}
 
-	recommendations, err := h.lifeModeService.GetFoodRecommendation(userID, req.Preferences, req.Location, req.Budget)
+	req.UserID = userID.(string)
+
+	response, err := h.lifeModeService.GetFoodRecommendation(&req)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, models.APIResponse{
+		c.JSON(http.StatusInternalServerError, models.APIResponse{
 			Success: false,
-			Message: "获取美食推荐失败",
+			Message: "Failed to get food recommendation",
 			Error:   err.Error(),
 		})
 		return
@@ -56,44 +47,32 @@ func (h *LifeModeHandler) GetFoodRecommendation(c *gin.Context) {
 
 	c.JSON(http.StatusOK, models.APIResponse{
 		Success: true,
-		Message: "获取美食推荐成功",
-		Data:    recommendations,
+		Message: "Food recommendation generated successfully",
+		Data:    response,
 	})
 }
 
 // CreateTravelPlan 创建旅行计划
 func (h *LifeModeHandler) CreateTravelPlan(c *gin.Context) {
-	userID := c.GetString("user_id")
-	if userID == "" {
-		c.JSON(http.StatusUnauthorized, models.APIResponse{
-			Success: false,
-			Message: "用户未认证",
-		})
-		return
-	}
+	userID, _ := c.Get("user_id")
 
-	var req struct {
-		Destination string                 `json:"destination" validate:"required"`
-		StartDate   string                 `json:"start_date" validate:"required"`
-		EndDate     string                 `json:"end_date" validate:"required"`
-		Budget      float64                `json:"budget"`
-		Preferences map[string]interface{} `json:"preferences"`
-	}
-
+	var req services.TravelPlanRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, models.APIResponse{
 			Success: false,
-			Message: "请求参数错误",
+			Message: "Invalid request format",
 			Error:   err.Error(),
 		})
 		return
 	}
 
-	plan, err := h.lifeModeService.CreateTravelPlan(userID, req.Destination, req.StartDate, req.EndDate, req.Budget, req.Preferences)
+	req.UserID = userID.(string)
+
+	response, err := h.lifeModeService.CreateTravelPlan(&req)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, models.APIResponse{
+		c.JSON(http.StatusInternalServerError, models.APIResponse{
 			Success: false,
-			Message: "创建旅行计划失败",
+			Message: "Failed to create travel plan",
 			Error:   err.Error(),
 		})
 		return
@@ -101,43 +80,32 @@ func (h *LifeModeHandler) CreateTravelPlan(c *gin.Context) {
 
 	c.JSON(http.StatusOK, models.APIResponse{
 		Success: true,
-		Message: "创建旅行计划成功",
-		Data:    plan,
+		Message: "Travel plan created successfully",
+		Data:    response,
 	})
 }
 
 // CreateMoodEntry 创建情绪记录
 func (h *LifeModeHandler) CreateMoodEntry(c *gin.Context) {
-	userID := c.GetString("user_id")
-	if userID == "" {
-		c.JSON(http.StatusUnauthorized, models.APIResponse{
-			Success: false,
-			Message: "用户未认证",
-		})
-		return
-	}
+	userID, _ := c.Get("user_id")
 
-	var req struct {
-		Mood        string `json:"mood" validate:"required"`
-		Intensity   int    `json:"intensity" validate:"min=1,max=10"`
-		Description string `json:"description"`
-		Tags        []string `json:"tags"`
-	}
-
+	var req services.MoodEntryRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, models.APIResponse{
 			Success: false,
-			Message: "请求参数错误",
+			Message: "Invalid request format",
 			Error:   err.Error(),
 		})
 		return
 	}
 
-	entry, err := h.lifeModeService.CreateMoodEntry(userID, req.Mood, req.Intensity, req.Description, req.Tags)
+	req.UserID = userID.(string)
+
+	response, err := h.lifeModeService.CreateMoodEntry(&req)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, models.APIResponse{
+		c.JSON(http.StatusInternalServerError, models.APIResponse{
 			Success: false,
-			Message: "创建情绪记录失败",
+			Message: "Failed to create mood entry",
 			Error:   err.Error(),
 		})
 		return
@@ -145,71 +113,61 @@ func (h *LifeModeHandler) CreateMoodEntry(c *gin.Context) {
 
 	c.JSON(http.StatusOK, models.APIResponse{
 		Success: true,
-		Message: "创建情绪记录成功",
-		Data:    entry,
+		Message: "Mood entry created successfully",
+		Data:    response,
 	})
 }
 
 // GetMoodHistory 获取情绪历史
 func (h *LifeModeHandler) GetMoodHistory(c *gin.Context) {
-	userID := c.GetString("user_id")
-	if userID == "" {
-		c.JSON(http.StatusUnauthorized, models.APIResponse{
-			Success: false,
-			Message: "用户未认证",
-		})
-		return
-	}
+	userID, _ := c.Get("user_id")
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	perPage, _ := strconv.Atoi(c.DefaultQuery("per_page", "10"))
 
-	history, err := h.lifeModeService.GetMoodHistory(userID)
+	entries, total, err := h.lifeModeService.GetMoodHistory(userID.(string), page, perPage)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, models.APIResponse{
 			Success: false,
-			Message: "获取情绪历史失败",
+			Message: "Failed to get mood history",
 			Error:   err.Error(),
 		})
 		return
 	}
 
-	c.JSON(http.StatusOK, models.APIResponse{
-		Success: true,
-		Message: "获取情绪历史成功",
-		Data:    history,
+	totalPages := (total + perPage - 1) / perPage
+
+	c.JSON(http.StatusOK, models.PaginatedResponse{
+		Data: entries,
+		Pagination: models.Pagination{
+			Page:       page,
+			PerPage:    perPage,
+			Total:      total,
+			TotalPages: totalPages,
+		},
 	})
 }
 
 // StartMeditationSession 开始冥想会话
 func (h *LifeModeHandler) StartMeditationSession(c *gin.Context) {
-	userID := c.GetString("user_id")
-	if userID == "" {
-		c.JSON(http.StatusUnauthorized, models.APIResponse{
-			Success: false,
-			Message: "用户未认证",
-		})
-		return
-	}
+	userID, _ := c.Get("user_id")
 
-	var req struct {
-		Type        string `json:"type" validate:"required"`
-		Duration    int    `json:"duration" validate:"min=1"`
-		Background  string `json:"background"`
-		Guidance    bool   `json:"guidance"`
-	}
-
+	var req services.MeditationSessionRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, models.APIResponse{
 			Success: false,
-			Message: "请求参数错误",
+			Message: "Invalid request format",
 			Error:   err.Error(),
 		})
 		return
 	}
 
-	session, err := h.lifeModeService.StartMeditationSession(userID, req.Type, req.Duration, req.Background, req.Guidance)
+	req.UserID = userID.(string)
+
+	response, err := h.lifeModeService.StartMeditationSession(&req)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, models.APIResponse{
+		c.JSON(http.StatusInternalServerError, models.APIResponse{
 			Success: false,
-			Message: "开始冥想会话失败",
+			Message: "Failed to start meditation session",
 			Error:   err.Error(),
 		})
 		return
@@ -217,35 +175,36 @@ func (h *LifeModeHandler) StartMeditationSession(c *gin.Context) {
 
 	c.JSON(http.StatusOK, models.APIResponse{
 		Success: true,
-		Message: "开始冥想会话成功",
-		Data:    session,
+		Message: "Meditation session started successfully",
+		Data:    response,
 	})
 }
 
 // GetMeditationHistory 获取冥想历史
 func (h *LifeModeHandler) GetMeditationHistory(c *gin.Context) {
-	userID := c.GetString("user_id")
-	if userID == "" {
-		c.JSON(http.StatusUnauthorized, models.APIResponse{
-			Success: false,
-			Message: "用户未认证",
-		})
-		return
-	}
+	userID, _ := c.Get("user_id")
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	perPage, _ := strconv.Atoi(c.DefaultQuery("per_page", "10"))
 
-	history, err := h.lifeModeService.GetMeditationHistory(userID)
+	sessions, total, err := h.lifeModeService.GetMeditationHistory(userID.(string), page, perPage)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, models.APIResponse{
 			Success: false,
-			Message: "获取冥想历史失败",
+			Message: "Failed to get meditation history",
 			Error:   err.Error(),
 		})
 		return
 	}
 
-	c.JSON(http.StatusOK, models.APIResponse{
-		Success: true,
-		Message: "获取冥想历史成功",
-		Data:    history,
+	totalPages := (total + perPage - 1) / perPage
+
+	c.JSON(http.StatusOK, models.PaginatedResponse{
+		Data: sessions,
+		Pagination: models.Pagination{
+			Page:       page,
+			PerPage:    perPage,
+			Total:      total,
+			TotalPages: totalPages,
+		},
 	})
 }

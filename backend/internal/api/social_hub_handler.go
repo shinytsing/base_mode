@@ -2,6 +2,7 @@ package api
 
 import (
 	"net/http"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"qa-toolbox-backend/internal/models"
@@ -18,66 +19,27 @@ func NewSocialHubHandler(socialHubService *services.SocialHubService) *SocialHub
 	}
 }
 
-// FindMatches 寻找匹配
+// FindMatches 查找匹配
 func (h *SocialHubHandler) FindMatches(c *gin.Context) {
-	userID := c.GetString("user_id")
-	if userID == "" {
-		c.JSON(http.StatusUnauthorized, models.APIResponse{
-			Success: false,
-			Message: "用户未认证",
-		})
-		return
-	}
+	userID, _ := c.Get("user_id")
 
-	var req struct {
-		Preferences map[string]interface{} `json:"preferences"`
-		Location    string                 `json:"location"`
-		Radius      int                    `json:"radius"`
-		MaxResults  int                    `json:"max_results"`
-	}
-
+	var req services.MatchRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, models.APIResponse{
 			Success: false,
-			Message: "请求参数错误",
+			Message: "Invalid request format",
 			Error:   err.Error(),
 		})
 		return
 	}
 
-	matches, err := h.socialHubService.FindMatches(userID, req.Preferences, req.Location, req.Radius, req.MaxResults)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, models.APIResponse{
-			Success: false,
-			Message: "寻找匹配失败",
-			Error:   err.Error(),
-		})
-		return
-	}
+	req.UserID = userID.(string)
 
-	c.JSON(http.StatusOK, models.APIResponse{
-		Success: true,
-		Message: "寻找匹配成功",
-		Data:    matches,
-	})
-}
-
-// GetMatches 获取匹配列表
-func (h *SocialHubHandler) GetMatches(c *gin.Context) {
-	userID := c.GetString("user_id")
-	if userID == "" {
-		c.JSON(http.StatusUnauthorized, models.APIResponse{
-			Success: false,
-			Message: "用户未认证",
-		})
-		return
-	}
-
-	matches, err := h.socialHubService.GetMatches(userID)
+	response, err := h.socialHubService.FindMatches(&req)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, models.APIResponse{
 			Success: false,
-			Message: "获取匹配列表失败",
+			Message: "Failed to find matches",
 			Error:   err.Error(),
 		})
 		return
@@ -85,48 +47,61 @@ func (h *SocialHubHandler) GetMatches(c *gin.Context) {
 
 	c.JSON(http.StatusOK, models.APIResponse{
 		Success: true,
-		Message: "获取匹配列表成功",
-		Data:    matches,
+		Message: "Matches found successfully",
+		Data:    response,
+	})
+}
+
+// GetMatches 获取匹配历史
+func (h *SocialHubHandler) GetMatches(c *gin.Context) {
+	userID, _ := c.Get("user_id")
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	perPage, _ := strconv.Atoi(c.DefaultQuery("per_page", "10"))
+
+	matches, total, err := h.socialHubService.GetMatches(userID.(string), page, perPage)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, models.APIResponse{
+			Success: false,
+			Message: "Failed to get matches",
+			Error:   err.Error(),
+		})
+		return
+	}
+
+	totalPages := (total + perPage - 1) / perPage
+
+	c.JSON(http.StatusOK, models.PaginatedResponse{
+		Data: matches,
+		Pagination: models.Pagination{
+			Page:       page,
+			PerPage:    perPage,
+			Total:      total,
+			TotalPages: totalPages,
+		},
 	})
 }
 
 // CreateActivity 创建活动
 func (h *SocialHubHandler) CreateActivity(c *gin.Context) {
-	userID := c.GetString("user_id")
-	if userID == "" {
-		c.JSON(http.StatusUnauthorized, models.APIResponse{
-			Success: false,
-			Message: "用户未认证",
-		})
-		return
-	}
+	userID, _ := c.Get("user_id")
 
-	var req struct {
-		Title       string                 `json:"title" validate:"required"`
-		Description string                 `json:"description"`
-		Type        string                 `json:"type" validate:"required"`
-		Location    string                 `json:"location"`
-		StartTime   string                 `json:"start_time" validate:"required"`
-		EndTime     string                 `json:"end_time"`
-		MaxParticipants int               `json:"max_participants"`
-		Tags        []string               `json:"tags"`
-		Settings    map[string]interface{} `json:"settings"`
-	}
-
+	var req services.ActivityRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, models.APIResponse{
 			Success: false,
-			Message: "请求参数错误",
+			Message: "Invalid request format",
 			Error:   err.Error(),
 		})
 		return
 	}
 
-	activity, err := h.socialHubService.CreateActivity(userID, req.Title, req.Description, req.Type, req.Location, req.StartTime, req.EndTime, req.MaxParticipants, req.Tags, req.Settings)
+	req.UserID = userID.(string)
+
+	response, err := h.socialHubService.CreateActivity(&req)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, models.APIResponse{
+		c.JSON(http.StatusInternalServerError, models.APIResponse{
 			Success: false,
-			Message: "创建活动失败",
+			Message: "Failed to create activity",
 			Error:   err.Error(),
 		})
 		return
@@ -134,64 +109,58 @@ func (h *SocialHubHandler) CreateActivity(c *gin.Context) {
 
 	c.JSON(http.StatusOK, models.APIResponse{
 		Success: true,
-		Message: "创建活动成功",
-		Data:    activity,
+		Message: "Activity created successfully",
+		Data:    response,
 	})
 }
 
 // GetActivities 获取活动列表
 func (h *SocialHubHandler) GetActivities(c *gin.Context) {
-	userID := c.GetString("user_id")
-	if userID == "" {
-		c.JSON(http.StatusUnauthorized, models.APIResponse{
-			Success: false,
-			Message: "用户未认证",
-		})
-		return
-	}
+	userID, _ := c.Get("user_id")
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	perPage, _ := strconv.Atoi(c.DefaultQuery("per_page", "10"))
 
-	activities, err := h.socialHubService.GetActivities(userID)
+	activities, total, err := h.socialHubService.GetActivities(userID.(string), page, perPage)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, models.APIResponse{
 			Success: false,
-			Message: "获取活动列表失败",
+			Message: "Failed to get activities",
 			Error:   err.Error(),
 		})
 		return
 	}
 
-	c.JSON(http.StatusOK, models.APIResponse{
-		Success: true,
-		Message: "获取活动列表成功",
-		Data:    activities,
+	totalPages := (total + perPage - 1) / perPage
+
+	c.JSON(http.StatusOK, models.PaginatedResponse{
+		Data: activities,
+		Pagination: models.Pagination{
+			Page:       page,
+			PerPage:    perPage,
+			Total:      total,
+			TotalPages: totalPages,
+		},
 	})
 }
 
-// JoinActivity 参加活动
+// JoinActivity 参与活动
 func (h *SocialHubHandler) JoinActivity(c *gin.Context) {
-	userID := c.GetString("user_id")
-	if userID == "" {
-		c.JSON(http.StatusUnauthorized, models.APIResponse{
-			Success: false,
-			Message: "用户未认证",
-		})
-		return
-	}
-
+	userID, _ := c.Get("user_id")
 	activityID := c.Param("id")
+
 	if activityID == "" {
 		c.JSON(http.StatusBadRequest, models.APIResponse{
 			Success: false,
-			Message: "活动ID不能为空",
+			Message: "Activity ID is required",
 		})
 		return
 	}
 
-	err := h.socialHubService.JoinActivity(userID, activityID)
+	err := h.socialHubService.JoinActivity(userID.(string), activityID)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, models.APIResponse{
 			Success: false,
-			Message: "参加活动失败",
+			Message: "Failed to join activity",
 			Error:   err.Error(),
 		})
 		return
@@ -199,79 +168,31 @@ func (h *SocialHubHandler) JoinActivity(c *gin.Context) {
 
 	c.JSON(http.StatusOK, models.APIResponse{
 		Success: true,
-		Message: "参加活动成功",
+		Message: "Joined activity successfully",
 	})
 }
 
 // SendMessage 发送消息
 func (h *SocialHubHandler) SendMessage(c *gin.Context) {
-	userID := c.GetString("user_id")
-	if userID == "" {
-		c.JSON(http.StatusUnauthorized, models.APIResponse{
-			Success: false,
-			Message: "用户未认证",
-		})
-		return
-	}
+	userID, _ := c.Get("user_id")
 
-	var req struct {
-		RecipientID string `json:"recipient_id" validate:"required"`
-		Content     string `json:"content" validate:"required"`
-		Type        string `json:"type"`
-		Attachments []string `json:"attachments"`
-	}
-
+	var req services.MessageRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, models.APIResponse{
 			Success: false,
-			Message: "请求参数错误",
+			Message: "Invalid request format",
 			Error:   err.Error(),
 		})
 		return
 	}
 
-	message, err := h.socialHubService.SendMessage(userID, req.RecipientID, req.Content, req.Type, req.Attachments)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, models.APIResponse{
-			Success: false,
-			Message: "发送消息失败",
-			Error:   err.Error(),
-		})
-		return
-	}
+	req.UserID = userID.(string)
 
-	c.JSON(http.StatusOK, models.APIResponse{
-		Success: true,
-		Message: "发送消息成功",
-		Data:    message,
-	})
-}
-
-// GetMessages 获取消息
-func (h *SocialHubHandler) GetMessages(c *gin.Context) {
-	userID := c.GetString("user_id")
-	if userID == "" {
-		c.JSON(http.StatusUnauthorized, models.APIResponse{
-			Success: false,
-			Message: "用户未认证",
-		})
-		return
-	}
-
-	chatID := c.Param("id")
-	if chatID == "" {
-		c.JSON(http.StatusBadRequest, models.APIResponse{
-			Success: false,
-			Message: "聊天ID不能为空",
-		})
-		return
-	}
-
-	messages, err := h.socialHubService.GetMessages(userID, chatID)
+	response, err := h.socialHubService.SendMessage(&req)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, models.APIResponse{
 			Success: false,
-			Message: "获取消息失败",
+			Message: "Failed to send message",
 			Error:   err.Error(),
 		})
 		return
@@ -279,7 +200,44 @@ func (h *SocialHubHandler) GetMessages(c *gin.Context) {
 
 	c.JSON(http.StatusOK, models.APIResponse{
 		Success: true,
-		Message: "获取消息成功",
-		Data:    messages,
+		Message: "Message sent successfully",
+		Data:    response,
+	})
+}
+
+// GetMessages 获取消息列表
+func (h *SocialHubHandler) GetMessages(c *gin.Context) {
+	chatID := c.Param("id")
+	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
+	perPage, _ := strconv.Atoi(c.DefaultQuery("per_page", "10"))
+
+	if chatID == "" {
+		c.JSON(http.StatusBadRequest, models.APIResponse{
+			Success: false,
+			Message: "Chat ID is required",
+		})
+		return
+	}
+
+	messages, total, err := h.socialHubService.GetMessages(chatID, page, perPage)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, models.APIResponse{
+			Success: false,
+			Message: "Failed to get messages",
+			Error:   err.Error(),
+		})
+		return
+	}
+
+	totalPages := (total + perPage - 1) / perPage
+
+	c.JSON(http.StatusOK, models.PaginatedResponse{
+		Data: messages,
+		Pagination: models.Pagination{
+			Page:       page,
+			PerPage:    perPage,
+			Total:      total,
+			TotalPages: totalPages,
+		},
 	})
 }

@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 
 void main() {
   runApp(const QAToolBoxApp());
@@ -178,7 +180,14 @@ class _HomeTab extends StatelessWidget {
                 icon: Icons.science,
                 title: '测试用例',
                 subtitle: '创建和执行测试用例',
-                onTap: () {},
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const TestCaseGeneratorPage(),
+                    ),
+                  );
+                },
               ),
               _buildListItem(
                 icon: Icons.analytics,
